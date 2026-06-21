@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>30FPS Stock — ระบบจัดการคลังไอเทม</title>
+  <meta name="description" content="ระบบจัดการคลังไอเทมในเกม 30FPS — ดูสต็อก จัดการจำนวน และติดตามประวัติ" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      --font-main: 'IBM Plex Sans Thai', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.14);
+      --transition: .22s cubic-bezier(.4,0,.2,1);
+    }
+
+    [data-theme="dark"] {
+      --bg-root: #0b0e14;
+      --bg-surface: #141820;
+      --bg-elevated: #1a1f2b;
+      --bg-hover: #222838;
+      --bg-modal: #181d28;
+      --border: #252b3a;
+      --border-subtle: #1e2433;
+      --text-primary: #e8ecf4;
+      --text-secondary: #8892a8;
+      --text-tertiary: #5c6578;
+      --accent: #2dd4a8;
+      --accent-dim: rgba(45,212,168,.12);
+      --accent-hover: #34eabc;
+      --danger: #f45b69;
+      --danger-dim: rgba(244,91,105,.12);
+      --danger-hover: #ff6b78;
+      --warning: #f0a940;
+      --warning-dim: rgba(240,169,64,.12);
+      --success: #3ecf8e;
+      --success-dim: rgba(62,207,142,.12);
+      --glass: rgba(20,24,32,.75);
+      --glass-border: rgba(255,255,255,.06);
+      --scrollbar-track: #141820;
+      --scrollbar-thumb: #2a3040;
+    }
+
+    [data-theme="light"] {
+      --bg-root: #f3f5f9;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f8f9fc;
+      --bg-hover: #eef1f6;
+      --bg-modal: #ffffff;
+      --border: #e0e4ec;
+      --border-subtle: #eaecf2;
+      --text-primary: #1a1d26;
+      --text-secondary: #5c6578;
+      --text-tertiary: #8892a8;
+      --accent: #0ea47a;
+      --accent-dim: rgba(14,164,122,.08);
+      --accent-hover: #12c090;
+      --danger: #dc3545;
+      --danger-dim: rgba(220,53,69,.08);
+      --danger-hover: #e8404f;
+      --warning: #d4920d;
+      --warning-dim: rgba(212,146,13,.08);
+      --success: #1a9e5e;
+      --success-dim: rgba(26,158,94,.08);
+      --glass: rgba(255,255,255,.8);
+      --glass-border: rgba(0,0,0,.06);
+      --scrollbar-track: #f3f5f9;
+      --scrollbar-thumb: #d0d5e0;
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-main);
+      background: var(--bg-root);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+    /* ===== Layout ===== */
+    .app-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+    }
+
+    /* ===== Header ===== */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px) saturate(1.2);
+      background: var(--glass);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 0 20px;
+      transition: background var(--transition);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent), #1a9e8e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.15rem;
+      transition: all var(--transition);
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    /* ===== Tabs ===== */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      padding: 16px 0 0;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-main);
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      position: relative;
+      bottom: -1px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-btn i { font-size: 1.1rem; }
+
+    .tab-panel { display: none; animation: fadeUp .3s ease; }
+    .tab-panel.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Stats Bar ===== */
+    .stats-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 160px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all var(--transition);
+    }
+
+    .stat-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .stat-icon.teal { background: var(--accent-dim); color: var(--accent); }
+    .stat-icon.orange { background: var(--warning-dim); color: var(--warning); }
+    .stat-icon.red { background: var(--danger-dim); color: var(--danger); }
+
+    .stat-info { display: flex; flex-direction: column; }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+      font-family: var(--font-mono);
+    }
+
+    .stat-label {
+      font-size: .78rem;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+
+    /* ===== Item Cards Grid ===== */
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .item-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .item-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      border-radius: 4px 0 0 4px;
+      background: var(--accent);
+      transition: background var(--transition);
+    }
+
+    .item-card.illegal::before { background: var(--danger); }
+
+    .item-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .item-card.illegal:hover { border-color: var(--danger); }
+
+    .item-card.zero { opacity: .4; }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .item-card.illegal .card-icon {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .card-body { flex: 1; min-width: 0; }
+
+    .card-name {
+      font-size: .9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-illegal {
+      font-size: .65rem;
+      background: var(--danger);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .card-qty {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.3;
+    }
+
+    .item-card.illegal .card-qty { color: var(--danger); }
+
+    .card-category {
+      font-size: .72rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      font-weight: 500;
+    }
+
+    /* ===== Category Sections ===== */
+    .category-section {
+      margin-bottom: 28px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .category-header-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+    }
+
+    .category-header-label {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .category-header-count {
+      font-size: .75rem;
+      color: var(--text-tertiary);
+      background: var(--bg-elevated);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-family: var(--font-mono);
+    }
+
+    /* Category colors */
+    .cat-gun .category-header-icon { background: rgba(244,91,105,.12); color: #f45b69; }
+    .cat-gun .card-icon { background: rgba(244,91,105,.12); color: #f45b69; }
+    .cat-ammo .category-header-icon { background: rgba(240,169,64,.12); color: #f0a940; }
+    .cat-ammo .card-icon { background: rgba(240,169,64,.12); color: #f0a940; }
+    .cat-drug .category-header-icon { background: rgba(190,80,220,.12); color: #be50dc; }
+    .cat-drug .card-icon { background: rgba(190,80,220,.12); color: #be50dc; }
+    .cat-gold .category-header-icon { background: rgba(250,204,21,.12); color: #facc15; }
+    .cat-gold .card-icon { background: rgba(250,204,21,.12); color: #facc15; }
+    .cat-armor .category-header-icon { background: rgba(56,189,248,.12); color: #38bdf8; }
+    .cat-armor .card-icon { background: rgba(56,189,248,.12); color: #38bdf8; }
+    .cat-material .category-header-icon { background: rgba(132,204,22,.12); color: #84cc16; }
+    .cat-material .card-icon { background: rgba(132,204,22,.12); color: #84cc16; }
+    .cat-tool .category-header-icon { background: rgba(168,162,158,.12); color: #a8a29e; }
+    .cat-tool .card-icon { background: rgba(168,162,158,.12); color: #a8a29e; }
+    .cat-misc .category-header-icon { background: rgba(129,140,248,.12); color: #818cf8; }
+    .cat-misc .card-icon { background: rgba(129,140,248,.12); color: #818cf8; }
+
+    .cat-gun .card-qty { color: #f45b69; }
+    .cat-ammo .card-qty { color: #f0a940; }
+    .cat-drug .card-qty { color: #be50dc; }
+    .cat-gold .card-qty { color: #facc15; }
+    .cat-armor .card-qty { color: #38bdf8; }
+    .cat-material .card-qty { color: #84cc16; }
+    .cat-tool .card-qty { color: #a8a29e; }
+    .cat-misc .card-qty { color: #818cf8; }
+
+    /* ===== Stock Management ===== */
+    .search-bar {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .search-bar i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      font-size: 1.1rem;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: .9rem;
+      transition: all var(--transition);
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .search-input::placeholder { color: var(--text-tertiary); }
+
+    .stock-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stock-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all var(--transition);
+    }
+
+    .stock-row:hover {
+      border-color: var(--accent);
+      background: var(--bg-elevated);
+    }
+
+    .stock-row-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .stock-row.illegal .stock-row-icon {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .stock-row-info { flex: 1; min-width: 0; }
+
+    .stock-row-name {
+      font-weight: 600;
+      font-size: .88rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stock-row-qty {
+      font-size: .78rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    .stock-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-add, .btn-remove {
+      padding: 8px 14px;
+      border: 1px solid;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-main);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn-add {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: transparent;
+    }
+
+    .btn-add:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-remove {
+      background: var(--danger-dim);
+      color: var(--danger);
+      border-color: transparent;
+    }
+
+    .btn-remove:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all .25s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--bg-modal);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 420px;
+      padding: 28px;
+      transform: scale(.92) translateY(20px);
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-overlay.show .modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all var(--transition);
+    }
+
+    .modal-close:hover {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .modal-subtitle {
+      font-size: .82rem;
+      color: var(--text-tertiary);
+      margin-bottom: 24px;
+    }
+
+    .modal-qty-display {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .modal-qty-label {
+      font-size: .78rem;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+
+    .modal-qty-value {
+      font-family: var(--font-mono);
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+
+    .modal-qty-value.add { color: var(--accent); }
+    .modal-qty-value.remove { color: var(--danger); }
+
+    .qty-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .qty-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+      font-family: var(--font-mono);
+    }
+
+    .qty-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .qty-btn:active { transform: scale(.95); }
+
+    .qty-input-wrap {
+      position: relative;
+    }
+
+    .qty-input {
+      width: 100px;
+      text-align: center;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: 600;
+      outline: none;
+      transition: all var(--transition);
+      -moz-appearance: textfield;
+    }
+
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .qty-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .qty-preview {
+      text-align: center;
+      margin-bottom: 24px;
+      font-size: .85rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .qty-preview span {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .modal-warning {
+      text-align: center;
+      color: var(--danger);
+      font-size: .82rem;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+      animation: shake .3s ease;
+    }
+
+    .modal-warning.show { display: block; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-modal {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid;
+      border-radius: var(--radius-md);
+      font-family: var(--font-main);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-cancel {
+      background: var(--bg-elevated);
+      border-color: var(--border);
+      color: var(--text-secondary);
+    }
+
+    .btn-cancel:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-apply-add {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-apply-add:hover { background: var(--accent-hover); }
+
+    .btn-apply-remove {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+
+    .btn-apply-remove:hover { background: var(--danger-hover); }
+
+    .btn-modal:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .btn-modal .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    /* ===== Log ===== */
+    .log-toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .log-toolbar .search-bar { flex: 1; min-width: 200px; margin-bottom: 0; }
+
+    .filter-select {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: .85rem;
+      outline: none;
+      cursor: pointer;
+      transition: all var(--transition);
+      min-width: 140px;
+    }
+
+    .filter-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .btn-danger-outline {
+      padding: 10px 16px;
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-md);
+      background: var(--danger-dim);
+      color: var(--danger);
+      font-family: var(--font-main);
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-danger-outline:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all var(--transition);
+    }
+
+    .log-entry:hover {
+      border-color: var(--accent);
+      background: var(--bg-elevated);
+    }
+
+    .log-action-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      min-width: 52px;
+      text-align: center;
+    }
+
+    .log-action-badge.add {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .log-action-badge.remove {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .log-body { flex: 1; min-width: 0; }
+
+    .log-item-name {
+      font-weight: 600;
+      font-size: .88rem;
+    }
+
+    .log-detail {
+      font-size: .78rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .log-note {
+      font-size: .78rem;
+      color: var(--text-secondary);
+      font-style: italic;
+      margin-top: 2px;
+    }
+
+    .log-time {
+      font-size: .75rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-load-more {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-main);
+      font-size: .88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-load-more:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ===== Loading & Empty ===== */
+    .loading-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      gap: 12px;
+    }
+
+    .spinner-lg {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: .85rem;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .empty-state p { font-size: .9rem; }
+
+    /* ===== Toast ===== */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: .85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 280px;
+      max-width: 400px;
+      box-shadow: var(--shadow-lg);
+      animation: toastIn .3s ease;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .toast.removing { opacity: 0; transform: translateX(20px); }
+
+    .toast.error {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .toast.success {
+      background: var(--success);
+      color: #fff;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ===== Confirm Dialog ===== */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all .25s ease;
+      padding: 20px;
+    }
+
+    .confirm-overlay.show { opacity: 1; visibility: visible; }
+
+    .confirm-box {
+      background: var(--bg-modal);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      transform: scale(.92);
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .confirm-overlay.show .confirm-box { transform: scale(1); }
+
+    .confirm-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--danger-dim);
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin: 0 auto 16px;
+    }
+
+    .confirm-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .confirm-text {
+      font-size: .85rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .confirm-actions .btn-modal { flex: 1; }
+
+    .btn-confirm-danger {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+
+    .btn-confirm-danger:hover { background: var(--danger-hover); }
+
+    /* ===== Realtime Indicator ===== */
+    .realtime-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse-dot 2s ease infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(62,207,142,.4); }
+      50% { box-shadow: 0 0 0 6px rgba(62,207,142,0); }
+    }
+
+    .realtime-status {
+      font-size: .75rem;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* ===== Mobile ===== */
+    @media (max-width: 640px) {
+      .tab-btn { padding: 10px 12px; font-size: .82rem; }
+      .tab-btn span { display: none; }
+      .item-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .item-card { padding: 14px; }
+      .card-icon { width: 36px; height: 36px; font-size: 1rem; }
+      .card-qty { font-size: 1.2rem; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 1.2rem; }
+      .stock-row { flex-wrap: wrap; }
+      .stock-actions { width: 100%; }
+      .stock-actions .btn-add, .stock-actions .btn-remove { flex: 1; justify-content: center; }
+      .log-entry { flex-wrap: wrap; gap: 8px; }
+      .log-time { width: 100%; order: 3; }
+      .log-toolbar { flex-direction: column; }
+      .log-toolbar .search-bar { min-width: 0; }
+      .header-inner { height: 56px; }
+      .brand span { display: none; }
+    }
+
+    @media (max-width: 400px) {
+      .item-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="brand" href="#">
+        <div class="brand-icon"><i class="ti ti-package"></i></div>
+        <span>30FPS Stock</span>
+      </a>
+      <div class="header-actions">
+        <div class="realtime-status" id="realtimeStatus">
+          <span class="realtime-dot"></span>Realtime
+        </div>
+        <button class="btn-icon" id="themeToggle" title="สลับธีม" aria-label="สลับธีม">
+          <i class="ti ti-moon-stars"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <!-- ===== Tab Bar ===== -->
+    <nav class="tab-bar" role="tablist">
+      <button class="tab-btn active" data-tab="dashboard" role="tab" id="tab-dashboard">
+        <i class="ti ti-layout-dashboard"></i><span>แดชบอร์ด</span>
+      </button>
+      <button class="tab-btn" data-tab="stock" role="tab" id="tab-stock">
+        <i class="ti ti-adjustments-alt"></i><span>จัดการ Stock</span>
+      </button>
+      <button class="tab-btn" data-tab="log" role="tab" id="tab-log">
+        <i class="ti ti-history"></i><span>Log ประวัติ</span>
+      </button>
+    </nav>
+
+    <!-- ===== Dashboard ===== -->
+    <section class="tab-panel active" id="panel-dashboard" role="tabpanel">
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card">
+          <div class="stat-icon teal"><i class="ti ti-package"></i></div>
+          <div class="stat-info">
+            <div class="stat-value" id="statTypes">—</div>
+            <div class="stat-label">ประเภทไอเทม</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><i class="ti ti-stack-2"></i></div>
+          <div class="stat-info">
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">จำนวนรวมในคลัง</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="ti ti-alert-triangle"></i></div>
+          <div class="stat-info">
+            <div class="stat-value" id="statIllegal">—</div>
+            <div class="stat-label">ไอเทมผิดกฎหมาย</div>
+          </div>
+        </div>
+      </div>
+      <div id="dashboardContent">
+        <div class="loading-wrap">
+          <div class="spinner-lg"></div>
+          <div class="loading-text">กำลังโหลดข้อมูล...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Stock Management ===== -->
+    <section class="tab-panel" id="panel-stock" role="tabpanel">
+      <div class="search-bar">
+        <i class="ti ti-search"></i>
+        <input class="search-input" id="stockSearch" type="text" placeholder="ค้นหาไอเทม..." />
+      </div>
+      <div id="stockContent">
+        <div class="loading-wrap">
+          <div class="spinner-lg"></div>
+          <div class="loading-text">กำลังโหลดข้อมูล...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Log ===== -->
+    <section class="tab-panel" id="panel-log" role="tabpanel">
+      <div class="log-toolbar">
+        <div class="search-bar">
+          <i class="ti ti-search"></i>
+          <input class="search-input" id="logSearch" type="text" placeholder="ค้นหาตามชื่อไอเทม..." />
+        </div>
+        <select class="filter-select" id="logFilter">
+          <option value="all">ทั้งหมด</option>
+          <option value="add">เพิ่มเข้า</option>
+          <option value="remove">นำออก</option>
+        </select>
+        <button class="btn-danger-outline" id="clearLogBtn">
+          <i class="ti ti-trash"></i> ล้าง Log
+        </button>
+      </div>
+      <div id="logContent">
+        <div class="loading-wrap">
+          <div class="spinner-lg"></div>
+          <div class="loading-text">กำลังโหลดข้อมูล...</div>
+        </div>
+      </div>
+      <button class="btn-load-more" id="loadMoreBtn" style="display:none;">
+        <i class="ti ti-chevron-down"></i> โหลดเพิ่มเติม
+      </button>
+    </section>
+  </div>
+
+  <!-- ===== Stock Modal ===== -->
+  <div class="modal-overlay" id="stockModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">จัดการไอเทม</div>
+        <button class="modal-close" id="modalClose"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-subtitle" id="modalSubtitle"></div>
+      <div class="modal-qty-display">
+        <div class="modal-qty-label">จำนวนปัจจุบัน</div>
+        <div class="modal-qty-value" id="modalCurrentQty">0</div>
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn" id="qtyMinus">−</button>
+        <div class="qty-input-wrap">
+          <input class="qty-input" id="qtyInput" type="number" min="1" value="1" />
+        </div>
+        <button class="qty-btn" id="qtyPlus">+</button>
+      </div>
+      <div class="qty-preview" id="qtyPreview"></div>
+      <div class="modal-warning" id="modalWarning">
+        <i class="ti ti-alert-circle"></i> จำนวนในคลังไม่สามารถติดลบได้
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-cancel" id="modalCancelBtn">ยกเลิก</button>
+        <button class="btn-modal" id="modalApplyBtn">
+          <span id="applyBtnText">ยืนยัน</span>
+          <div class="spinner" id="applySpinner" style="display:none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Confirm Dialog ===== -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+      <div class="confirm-icon"><i class="ti ti-trash"></i></div>
+      <div class="confirm-title">ล้าง Log ทั้งหมด?</div>
+      <div class="confirm-text">การดำเนินการนี้จะลบประวัติทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้</div>
+      <div class="confirm-actions">
+        <button class="btn-modal btn-cancel" id="confirmCancel">ยกเลิก</button>
+        <button class="btn-modal btn-confirm-danger" id="confirmDelete">
+          <i class="ti ti-trash"></i> ลบทั้งหมด
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Toast Container ===== -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ===== Scripts ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ===== Supabase Config =====
+    const SUPABASE_URL = 'https://obtxfxhhqvmrrirkflus.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9idHhmeGhocXZtcnJpcmtmbHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMjkxMTAsImV4cCI6MjA5NzYwNTExMH0.Qy06QTt4E7cwnF4CpCd4EFEnTflECTELnoQDBMlGJAE';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ===== Category Icon Map =====
+    const CATEGORY_ICONS = {
+      gun: 'ti-gun',
+      ammo: 'ti-bomb',
+      drug: 'ti-pill',
+      gold: 'ti-diamond',
+      armor: 'ti-shield-checkered',
+      material: 'ti-hammer',
+      tool: 'ti-settings',
+      misc: 'ti-cube'
+    };
+
+    const CATEGORY_LABELS = {
+      gun: '🔫 อาวุธปืน',
+      ammo: '🎯 กระสุน',
+      drug: '💊 ยา / สารต้องห้าม',
+      gold: '💰 ทอง / ของมีค่า',
+      armor: '🛡️ เกราะ / ชุดป้องกัน',
+      material: '🪵 วัตถุดิบ',
+      tool: '⚙️ อุปกรณ์ / เครื่องมือ',
+      misc: '📦 อื่นๆ'
+    };
+
+    // ลำดับ category ที่จะแสดง
+    const CATEGORY_ORDER = ['gun', 'ammo', 'drug', 'gold', 'armor', 'tool', 'material', 'misc'];
+
+    function getCategoryIcon(category) {
+      return CATEGORY_ICONS[(category || '').toLowerCase()] || 'ti-cube';
+    }
+
+    function getCategoryLabel(category) {
+      return CATEGORY_LABELS[(category || '').toLowerCase()] || '📦 อื่นๆ';
+    }
+
+    // ===== State =====
+    let allItems = [];
+    let logData = [];
+    let logPage = 0;
+    let logHasMore = true;
+    const LOG_PER_PAGE = 20;
+    let modalState = { item: null, action: null };
+
+    // ===== Theme =====
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+
+    function setTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      themeToggle.innerHTML = theme === 'dark'
+        ? '<i class="ti ti-moon-stars"></i>'
+        : '<i class="ti ti-sun"></i>';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    // Init theme from localStorage
+    setTheme(localStorage.getItem('theme') || 'dark');
+
+    // ===== Tabs =====
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${tab}`).classList.add('active');
+
+        if (tab === 'stock') loadStock();
+        if (tab === 'log') { logPage = 0; logData = []; logHasMore = true; loadLogs(); }
+      });
+    });
+
+    // ===== Toast =====
+    function showToast(message, type = 'error') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i class="ti ti-${type === 'error' ? 'alert-circle' : 'check'}"></i>${message}`;
+      container.appendChild(toast);
+      toast.addEventListener('click', () => removeToast(toast));
+      setTimeout(() => removeToast(toast), 4000);
+    }
+
+    function removeToast(toast) {
+      toast.classList.add('removing');
+      setTimeout(() => toast.remove(), 200);
+    }
+
+    // ===== Loading / Empty =====
+    function loadingHTML(text = 'กำลังโหลดข้อมูล...') {
+      return `<div class="loading-wrap"><div class="spinner-lg"></div><div class="loading-text">${text}</div></div>`;
+    }
+
+    function emptyHTML(icon, text) {
+      return `<div class="empty-state"><i class="ti ${icon}"></i><p>${text}</p></div>`;
+    }
+
+    // ===== Format =====
+    function formatThaiDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleString('th-TH', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    function formatNumber(n) {
+      return (n || 0).toLocaleString('th-TH');
+    }
+
+    // ===== Dashboard =====
+    async function loadDashboard() {
+      const content = document.getElementById('dashboardContent');
+      content.innerHTML = loadingHTML();
+      try {
+        const { data, error } = await db.from('items').select('*').order('name');
+        if (error) throw error;
+        allItems = data || [];
+        renderDashboard();
+      } catch (e) {
+        content.innerHTML = emptyHTML('ti-alert-circle', 'ไม่สามารถโหลดข้อมูลได้');
+        showToast('โหลดข้อมูลล้มเหลว: ' + e.message);
+      }
+    }
+
+    function renderDashboard() {
+      // Stats
+      const totalTypes = allItems.length;
+      const totalUnits = allItems.reduce((s, i) => s + (i.quantity || 0), 0);
+      const illegalCount = allItems.filter(i => i.is_illegal).length;
+      document.getElementById('statTypes').textContent = formatNumber(totalTypes);
+      document.getElementById('statTotal').textContent = formatNumber(totalUnits);
+      document.getElementById('statIllegal').textContent = formatNumber(illegalCount);
+
+      const content = document.getElementById('dashboardContent');
+
+      if (allItems.length === 0) {
+        content.innerHTML = emptyHTML('ti-package-off', 'ยังไม่มีไอเทมในระบบ');
+        return;
+      }
+
+      // จัดกลุ่มตาม category
+      const grouped = {};
+      allItems.forEach(item => {
+        const cat = (item.category || 'misc').toLowerCase();
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+
+      // เรียงตาม CATEGORY_ORDER
+      const sortedCats = CATEGORY_ORDER.filter(c => grouped[c]);
+      // เพิ่ม category ที่ไม่อยู่ใน ORDER
+      Object.keys(grouped).forEach(c => {
+        if (!sortedCats.includes(c)) sortedCats.push(c);
+      });
+
+      const sections = sortedCats.map(cat => {
+        const items = grouped[cat];
+        const icon = getCategoryIcon(cat);
+        const label = getCategoryLabel(cat);
+        const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+
+        const cards = items.map(item => {
+          const isIllegal = item.is_illegal;
+          const isZero = (item.quantity || 0) === 0;
+          const classes = ['item-card'];
+          if (isIllegal) classes.push('illegal');
+          if (isZero) classes.push('zero');
+
+          return `
+            <div class="${classes.join(' ')}">
+              <div class="card-icon"><i class="ti ${icon}"></i></div>
+              <div class="card-body">
+                <div class="card-name">
+                  ${escapeHtml(item.name)}
+                  ${isIllegal ? '<span class="badge-illegal">ผิดกฎหมาย</span>' : ''}
+                </div>
+                <div class="card-qty">${formatNumber(item.quantity)}</div>
+              </div>
+            </div>`;
+        }).join('');
+
+        return `
+          <div class="category-section cat-${cat}">
+            <div class="category-header">
+              <div class="category-header-icon"><i class="ti ${icon}"></i></div>
+              <div class="category-header-label">${label}</div>
+              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ชิ้น</div>
+            </div>
+            <div class="item-grid">${cards}</div>
+          </div>`;
+      }).join('');
+
+      content.innerHTML = sections;
+    }
+
+    // ===== Stock Management =====
+    async function loadStock() {
+      const content = document.getElementById('stockContent');
+      content.innerHTML = loadingHTML();
+      try {
+        const { data, error } = await db.from('items').select('*').order('name');
+        if (error) throw error;
+        allItems = data || [];
+        renderStock();
+      } catch (e) {
+        content.innerHTML = emptyHTML('ti-alert-circle', 'ไม่สามารถโหลดข้อมูลได้');
+        showToast('โหลดข้อมูลล้มเหลว: ' + e.message);
+      }
+    }
+
+    function renderStock(filter = '') {
+      const content = document.getElementById('stockContent');
+      const filtered = filter
+        ? allItems.filter(i => i.name.toLowerCase().includes(filter.toLowerCase()))
+        : allItems;
+
+      if (filtered.length === 0) {
+        content.innerHTML = emptyHTML('ti-search-off', filter ? 'ไม่พบไอเทมที่ค้นหา' : 'ยังไม่มีไอเทมในระบบ');
+        return;
+      }
+
+      const rows = filtered.map(item => {
+        const icon = getCategoryIcon(item.category);
+        const isIllegal = item.is_illegal;
+        return `
+          <div class="stock-row${isIllegal ? ' illegal' : ''}">
+            <div class="stock-row-icon"><i class="ti ${icon}"></i></div>
+            <div class="stock-row-info">
+              <div class="stock-row-name">
+                ${escapeHtml(item.name)}
+                ${isIllegal ? '<span class="badge-illegal">ผิดกฎหมาย</span>' : ''}
+              </div>
+              <div class="stock-row-qty">คงเหลือ: ${formatNumber(item.quantity)}</div>
+            </div>
+            <div class="stock-actions">
+              <button class="btn-add" onclick="openModal(${item.id}, 'add')">
+                <i class="ti ti-plus"></i> เพิ่ม
+              </button>
+              <button class="btn-remove" onclick="openModal(${item.id}, 'remove')">
+                <i class="ti ti-minus"></i> นำออก
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+      content.innerHTML = `<div class="stock-list">${rows}</div>`;
+    }
+
+    document.getElementById('stockSearch').addEventListener('input', (e) => {
+      renderStock(e.target.value);
+    });
+
+    // ===== Modal =====
+    const stockModal = document.getElementById('stockModal');
+    const qtyInput = document.getElementById('qtyInput');
+    const modalWarning = document.getElementById('modalWarning');
+    const modalApplyBtn = document.getElementById('modalApplyBtn');
+    const applyBtnText = document.getElementById('applyBtnText');
+    const applySpinner = document.getElementById('applySpinner');
+
+    function openModal(itemId, action) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+      modalState = { item, action };
+
+      document.getElementById('modalTitle').textContent = action === 'add' ? '+ เพิ่มไอเทม' : '- นำไอเทมออก';
+      document.getElementById('modalSubtitle').textContent = item.name;
+
+      const qtyDisplay = document.getElementById('modalCurrentQty');
+      qtyDisplay.textContent = formatNumber(item.quantity);
+      qtyDisplay.className = 'modal-qty-value ' + action;
+
+      qtyInput.value = 1;
+      modalWarning.classList.remove('show');
+
+      modalApplyBtn.className = `btn-modal ${action === 'add' ? 'btn-apply-add' : 'btn-apply-remove'}`;
+      applyBtnText.textContent = 'ยืนยัน';
+      applySpinner.style.display = 'none';
+      modalApplyBtn.disabled = false;
+
+      updatePreview();
+      stockModal.classList.add('show');
+    }
+
+    function closeModal() {
+      stockModal.classList.remove('show');
+      modalState = { item: null, action: null };
+    }
+
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    stockModal.addEventListener('click', (e) => {
+      if (e.target === stockModal) closeModal();
+    });
+
+    function updatePreview() {
+      const { item, action } = modalState;
+      if (!item) return;
+      const delta = parseInt(qtyInput.value) || 1;
+      const before = item.quantity || 0;
+      const after = action === 'add' ? before + delta : before - delta;
+
+      const preview = document.getElementById('qtyPreview');
+      const sign = action === 'add' ? '+' : '−';
+      preview.innerHTML = `<span>${formatNumber(before)}</span> ${sign} ${formatNumber(delta)} = <span>${formatNumber(after)}</span>`;
+
+      if (after < 0) {
+        modalWarning.classList.add('show');
+        modalApplyBtn.disabled = true;
+      } else {
+        modalWarning.classList.remove('show');
+        modalApplyBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('qtyMinus').addEventListener('click', () => {
+      const val = parseInt(qtyInput.value) || 1;
+      if (val > 1) qtyInput.value = val - 1;
+      updatePreview();
+    });
+
+    document.getElementById('qtyPlus').addEventListener('click', () => {
+      qtyInput.value = (parseInt(qtyInput.value) || 0) + 1;
+      updatePreview();
+    });
+
+    qtyInput.addEventListener('input', () => {
+      updatePreview();
+    });
+
+    qtyInput.addEventListener('blur', () => {
+      const val = parseInt(qtyInput.value);
+      if (!val || val < 1) qtyInput.value = 1;
+      updatePreview();
+    });
+
+    // เลือกข้อความทั้งหมดเมื่อ focus เพื่อพิมพ์ทับได้ง่าย
+    qtyInput.addEventListener('focus', () => {
+      qtyInput.select();
+    });
+
+    modalApplyBtn.addEventListener('click', async () => {
+      const { item, action } = modalState;
+      if (!item) return;
+      const delta = parseInt(qtyInput.value) || 1;
+      const before = item.quantity || 0;
+      const after = action === 'add' ? before + delta : before - delta;
+
+      if (after < 0) {
+        modalWarning.classList.add('show');
+        return;
+      }
+
+      // Loading state
+      applyBtnText.textContent = '';
+      applySpinner.style.display = 'block';
+      modalApplyBtn.disabled = true;
+
+      try {
+        // Update item quantity
+        const { error: updateErr } = await db
+          .from('items')
+          .update({ quantity: after })
+          .eq('id', item.id);
+        if (updateErr) throw updateErr;
+
+        // Insert log
+        const { error: logErr } = await db
+          .from('stock_log')
+          .insert({
+            item_id: item.id,
+            item_name: item.name,
+            action: action,
+            quantity_changed: delta,
+            quantity_before: before,
+            quantity_after: after
+          });
+        if (logErr) throw logErr;
+
+        // Update local state
+        item.quantity = after;
+        showToast(
+          `${action === 'add' ? 'เพิ่ม' : 'นำออก'} ${item.name} จำนวน ${formatNumber(delta)} สำเร็จ`,
+          'success'
+        );
+        closeModal();
+        renderDashboard();
+        renderStock(document.getElementById('stockSearch').value);
+      } catch (e) {
+        showToast('ดำเนินการไม่สำเร็จ: ' + e.message);
+        applyBtnText.textContent = 'ยืนยัน';
+        applySpinner.style.display = 'none';
+        modalApplyBtn.disabled = false;
+      }
+    });
+
+    // ===== Log =====
+    async function loadLogs(append = false) {
+      const content = document.getElementById('logContent');
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      if (!append) {
+        content.innerHTML = loadingHTML();
+        loadMoreBtn.style.display = 'none';
+      }
+
+      try {
+        const filter = document.getElementById('logFilter').value;
+        const search = document.getElementById('logSearch').value.trim();
+
+        let query = db
+          .from('stock_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(logPage * LOG_PER_PAGE, (logPage + 1) * LOG_PER_PAGE - 1);
+
+        if (filter !== 'all') {
+          query = query.eq('action', filter);
+        }
+        if (search) {
+          query = query.ilike('item_name', `%${search}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (append) {
+          logData = [...logData, ...(data || [])];
+        } else {
+          logData = data || [];
+        }
+
+        logHasMore = (data || []).length === LOG_PER_PAGE;
+        renderLogs();
+      } catch (e) {
+        if (!append) content.innerHTML = emptyHTML('ti-alert-circle', 'ไม่สามารถโหลดข้อมูลได้');
+        showToast('โหลด Log ล้มเหลว: ' + e.message);
+      }
+    }
+
+    function renderLogs() {
+      const content = document.getElementById('logContent');
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+      if (logData.length === 0) {
+        content.innerHTML = emptyHTML('ti-history-off', 'ยังไม่มีประวัติ');
+        loadMoreBtn.style.display = 'none';
+        return;
+      }
+
+      const entries = logData.map(log => {
+        const isAdd = log.action === 'add';
+        const sign = isAdd ? '+' : '−';
+        return `
+          <div class="log-entry">
+            <span class="log-action-badge ${log.action}">${isAdd ? 'เพิ่ม' : 'นำออก'}</span>
+            <div class="log-body">
+              <div class="log-item-name">${escapeHtml(log.item_name)}</div>
+              <div class="log-detail">
+                <span>${sign}${formatNumber(log.quantity_changed)}</span>
+                <span>•</span>
+                <span>${formatNumber(log.quantity_before)} → ${formatNumber(log.quantity_after)}</span>
+              </div>
+              ${log.note ? `<div class="log-note">${escapeHtml(log.note)}</div>` : ''}
+            </div>
+            <div class="log-time">${formatThaiDate(log.created_at)}</div>
+          </div>`;
+      }).join('');
+
+      content.innerHTML = `<div class="log-list">${entries}</div>`;
+      loadMoreBtn.style.display = logHasMore ? 'block' : 'none';
+    }
+
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+      logPage++;
+      loadLogs(true);
+    });
+
+    document.getElementById('logFilter').addEventListener('change', () => {
+      logPage = 0;
+      logData = [];
+      logHasMore = true;
+      loadLogs();
+    });
+
+    document.getElementById('logSearch').addEventListener('input', debounce(() => {
+      logPage = 0;
+      logData = [];
+      logHasMore = true;
+      loadLogs();
+    }, 350));
+
+    // ===== Clear Log =====
+    const confirmOverlay = document.getElementById('confirmOverlay');
+
+    document.getElementById('clearLogBtn').addEventListener('click', () => {
+      confirmOverlay.classList.add('show');
+    });
+
+    document.getElementById('confirmCancel').addEventListener('click', () => {
+      confirmOverlay.classList.remove('show');
+    });
+
+    confirmOverlay.addEventListener('click', (e) => {
+      if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
+    });
+
+    document.getElementById('confirmDelete').addEventListener('click', async () => {
+      try {
+        // Delete all rows — Supabase requires a filter, so we use gte on id
+        const { error } = await db.from('stock_log').delete().gte('id', 0);
+        if (error) throw error;
+
+        logData = [];
+        logPage = 0;
+        logHasMore = false;
+        renderLogs();
+        showToast('ล้าง Log สำเร็จ', 'success');
+      } catch (e) {
+        showToast('ล้าง Log ล้มเหลว: ' + e.message);
+      }
+      confirmOverlay.classList.remove('show');
+    });
+
+    // ===== Realtime =====
+    function setupRealtime() {
+      const channel = db
+        .channel('items-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, (payload) => {
+          handleRealtimeChange(payload);
+        })
+        .subscribe((status) => {
+          const statusEl = document.getElementById('realtimeStatus');
+          if (status === 'SUBSCRIBED') {
+            statusEl.innerHTML = '<span class="realtime-dot"></span>Realtime';
+          } else {
+            statusEl.innerHTML = '<i class="ti ti-wifi-off" style="margin-right:4px;font-size:.85rem;"></i>Offline';
+          }
+        });
+    }
+
+    function handleRealtimeChange(payload) {
+      const { eventType, new: newRow, old: oldRow } = payload;
+
+      if (eventType === 'INSERT') {
+        allItems.push(newRow);
+      } else if (eventType === 'UPDATE') {
+        const idx = allItems.findIndex(i => i.id === newRow.id);
+        if (idx !== -1) allItems[idx] = newRow;
+        else allItems.push(newRow);
+      } else if (eventType === 'DELETE') {
+        allItems = allItems.filter(i => i.id !== oldRow.id);
+      }
+
+      // Re-render active panel
+      renderDashboard();
+      const stockPanel = document.getElementById('panel-stock');
+      if (stockPanel.classList.contains('active')) {
+        renderStock(document.getElementById('stockSearch').value);
+      }
+    }
+
+    // ===== Utilities =====
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function debounce(fn, ms) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    // ===== Keyboard shortcuts =====
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        confirmOverlay.classList.remove('show');
+      }
+    });
+
+    // ===== Init =====
+    loadDashboard();
+    setupRealtime();
+  </script>
+</body>
+</html>
