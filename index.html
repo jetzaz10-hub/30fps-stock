@@ -1439,9 +1439,106 @@
       background: var(--danger);
       color: #fff;
     }
+
+    /* ===== Login Screen ===== */
+    .app-shell { display: none !important; }
+    .app-header { display: none !important; }
+
+    body.logged-in .app-shell { display: flex !important; }
+    body.logged-in .app-header { display: block !important; }
+
+    .login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-root);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    body.logged-in .login-screen {
+      display: none !important;
+    }
+
+    .login-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      animation: fadeUp .4s ease;
+    }
+
+    .login-logo {
+      margin-bottom: 20px;
+    }
+
+    .login-logo img {
+      height: 80px;
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 24px rgba(45,212,168,.12);
+    }
+
+    .login-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .login-subtitle {
+      font-size: .82rem;
+      color: var(--text-tertiary);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .login-error {
+      color: var(--danger);
+      font-size: .8rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: none;
+      animation: shake .3s ease;
+    }
+
+    .login-error.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
+  <!-- ===== Login Page ===== -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="logo.png" alt="30F Logo" />
+      </div>
+      <h1 class="login-title">เข้าสู่ระบบ 30F Stock</h1>
+      <p class="login-subtitle">กรุณากรอกบัญชีผู้ใช้งานเพื่อเข้าจัดการระบบคลัง</p>
+      
+      <div class="form-group" style="text-align: left;">
+        <label class="form-label" for="loginUsername">ชื่อผู้ใช้งาน (Username)</label>
+        <input class="form-input" id="loginUsername" type="text" placeholder="ระบุชื่อผู้ใช้งาน..." required />
+      </div>
+      <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+        <label class="form-label" for="loginPassword">รหัสผ่าน (Password)</label>
+        <input class="form-input" id="loginPassword" type="password" placeholder="ระบุรหัสผ่าน..." required />
+      </div>
+      
+      <div class="login-error" id="loginError">ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!</div>
+      
+      <button class="btn-modal btn-apply-add" id="loginSubmitBtn" style="width: 100%; height: 46px; margin-top: 10px;">
+        <span>เข้าสู่ระบบ</span>
+      </button>
+    </div>
+  </div>
+
   <!-- ===== Header ===== -->
   <header class="app-header">
     <div class="header-inner">
@@ -1455,6 +1552,9 @@
         </div>
         <button class="btn-icon" id="themeToggle" title="สลับธีม" aria-label="สลับธีม">
           <i class="ti ti-moon-stars"></i>
+        </button>
+        <button class="btn-icon" id="logoutBtn" title="ออกจากระบบ" aria-label="ออกจากระบบ" style="color: var(--danger);">
+          <i class="ti ti-logout"></i>
         </button>
       </div>
     </div>
@@ -2697,9 +2797,64 @@
       }
     });
 
+    // ===== Login Logic =====
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    }
+
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+    const loginError = document.getElementById('loginError');
+
+    async function handleLogin() {
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      const combined = `${username}:${password}`;
+      const hashed = await sha256(combined);
+
+      // Verify admin:admin30fpassword
+      if (hashed === '17f26736d58b83ef4c0fac9c00b80ac9a6656ae6cd38dc2c5fac0dbbc197340f') {
+        localStorage.setItem('isLoggedIn', 'true');
+        document.body.classList.add('logged-in');
+        loginError.classList.remove('show');
+        loadDashboard();
+        setupRealtime();
+      } else {
+        loginError.classList.add('show');
+        // Trigger shake
+        loginError.style.animation = 'none';
+        loginError.offsetHeight; /* trigger reflow */
+        loginError.style.animation = null;
+      }
+    }
+
+    loginSubmitBtn.addEventListener('click', handleLogin);
+    document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+    document.getElementById('loginUsername').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+        localStorage.removeItem('isLoggedIn');
+        window.location.reload();
+      }
+    });
+
     // ===== Init =====
-    loadDashboard();
-    setupRealtime();
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+      document.body.classList.add('logged-in');
+      loadDashboard();
+      setupRealtime();
+    } else {
+      document.body.classList.remove('logged-in');
+    }
   </script>
 </body>
 </html>
