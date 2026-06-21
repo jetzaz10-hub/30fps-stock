@@ -1296,9 +1296,16 @@
       align-items: center;
       gap: 10px;
       transition: all var(--transition);
+      cursor: pointer;
+      position: relative;
     }
 
     .finance-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .finance-card.editing {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-dim);
     }
@@ -1318,7 +1325,7 @@
     .finance-icon.redmoney { background: rgba(244,91,105,.12); color: #f45b69; }
     .finance-icon.greenmoney { background: rgba(132,204,22,.12); color: #84cc16; }
 
-    .finance-info { display: flex; flex-direction: column; }
+    .finance-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
     .finance-value {
       font-size: 1.15rem;
@@ -1327,10 +1334,79 @@
       font-family: var(--font-mono);
     }
 
+    .finance-value-display { display: flex; align-items: center; gap: 6px; }
+
+    .finance-edit-icon {
+      font-size: .8rem;
+      color: var(--text-tertiary);
+      opacity: 0;
+      transition: opacity var(--transition);
+      flex-shrink: 0;
+    }
+
+    .finance-card:hover .finance-edit-icon { opacity: 1; }
+
+    .finance-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid var(--accent);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      outline: none;
+      padding: 2px 0;
+      -moz-appearance: textfield;
+    }
+
+    .finance-input::-webkit-inner-spin-button,
+    .finance-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
     .finance-label {
       font-size: .7rem;
       color: var(--text-tertiary);
       font-weight: 500;
+    }
+
+    .finance-hint {
+      font-size: .65rem;
+      color: var(--text-tertiary);
+      opacity: .7;
+      margin-top: 1px;
+    }
+
+    .finance-reset-btn {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-tertiary);
+      font-size: .85rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: all var(--transition);
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .finance-card:hover .finance-reset-btn {
+      opacity: 1;
+    }
+
+    .finance-reset-btn:hover {
+      background: var(--danger-dim);
+      border-color: var(--danger);
+      color: var(--danger);
+      transform: scale(1.15);
     }
 
     /* ===== Form styles for Modals ===== */
@@ -1601,26 +1677,41 @@
       </div>
       <!-- ===== Finance Summary Bar ===== -->
       <div class="finance-bar" id="financeBar">
-        <div class="finance-card">
+        <div class="finance-card" id="cardDollar" onclick="startEditWallet('dollar', event)">
           <div class="finance-icon dollar"><i class="ti ti-coin"></i></div>
           <div class="finance-info">
-            <div class="finance-value" id="financeDollar">$0</div>
-            <div class="finance-label">ยอดซื้อดอลลาร์รวม</div>
+            <div class="finance-value-display">
+              <div class="finance-value" id="financeDollar">$0</div>
+              <i class="ti ti-pencil finance-edit-icon"></i>
+            </div>
+            <div class="finance-label">เงินดอลลาร์คงเหลือ</div>
+            <div class="finance-hint" id="hintDollar"></div>
           </div>
+          <button class="finance-reset-btn" onclick="resetWallet('dollar', event)" title="รีเซ็ตเป็น 0">×</button>
         </div>
-        <div class="finance-card">
+        <div class="finance-card" id="cardRed" onclick="startEditWallet('red', event)">
           <div class="finance-icon redmoney"><i class="ti ti-coin"></i></div>
           <div class="finance-info">
-            <div class="finance-value" id="financeRed">0</div>
-            <div class="finance-label">ยอดซื้อเงินแดงรวม</div>
+            <div class="finance-value-display">
+              <div class="finance-value" id="financeRed">0</div>
+              <i class="ti ti-pencil finance-edit-icon"></i>
+            </div>
+            <div class="finance-label">เงินแดงคงเหลือ</div>
+            <div class="finance-hint" id="hintRed"></div>
           </div>
+          <button class="finance-reset-btn" onclick="resetWallet('red', event)" title="รีเซ็ตเป็น 0">×</button>
         </div>
-        <div class="finance-card">
+        <div class="finance-card" id="cardGreen" onclick="startEditWallet('green', event)">
           <div class="finance-icon greenmoney"><i class="ti ti-coin"></i></div>
           <div class="finance-info">
-            <div class="finance-value" id="financeGreen">0</div>
-            <div class="finance-label">ยอดซื้อเงินเขียวรวม</div>
+            <div class="finance-value-display">
+              <div class="finance-value" id="financeGreen">0</div>
+              <i class="ti ti-pencil finance-edit-icon"></i>
+            </div>
+            <div class="finance-label">เงินเขียวคงเหลือ</div>
+            <div class="finance-hint" id="hintGreen"></div>
           </div>
+          <button class="finance-reset-btn" onclick="resetWallet('green', event)" title="รีเซ็ตเป็น 0">×</button>
         </div>
       </div>
       <div id="dashboardContent">
@@ -1913,6 +2004,8 @@
     const LOG_PER_PAGE = 20;
     let modalState = { item: null, action: null };
     let itemSpentMap = {};
+    let walletBalance = { dollar: 0, red: 0, green: 0 };
+    let walletEditingField = null;
 
     // ===== Theme =====
     const themeToggle = document.getElementById('themeToggle');
@@ -1998,46 +2091,160 @@
         if (itemsErr) throw itemsErr;
         allItems = itemsData || [];
 
-        // Fetch logs for spent calculations (only action = 'add')
+        // Fetch wallet balance
+        const { data: walletData, error: walletErr } = await db
+          .from('wallet')
+          .select('*')
+          .eq('id', 1)
+          .maybeSingle();
+        if (walletErr) throw walletErr;
+
+        walletBalance = {
+          dollar: walletData?.dollar || 0,
+          red: walletData?.red || 0,
+          green: walletData?.green || 0
+        };
+
+        // Fetch logs for per-item spent tracking only
         const { data: logsData, error: logsErr } = await db
           .from('stock_log')
           .select('item_id, spent_dollar, spent_red, spent_green')
           .eq('action', 'add');
         if (logsErr) throw logsErr;
 
-        // Reset spent map and global totals
         itemSpentMap = {};
-        let totalDollar = 0;
-        let totalRed = 0;
-        let totalGreen = 0;
-
         (logsData || []).forEach(log => {
           const itemId = log.item_id;
-          if (!itemSpentMap[itemId]) {
-            itemSpentMap[itemId] = { dollar: 0, red: 0, green: 0 };
-          }
-          const sd = log.spent_dollar || 0;
-          const sr = log.spent_red || 0;
-          const sg = log.spent_green || 0;
-
-          itemSpentMap[itemId].dollar += sd;
-          itemSpentMap[itemId].red += sr;
-          itemSpentMap[itemId].green += sg;
-
-          totalDollar += sd;
-          totalRed += sr;
-          totalGreen += sg;
+          if (!itemSpentMap[itemId]) itemSpentMap[itemId] = { dollar: 0, red: 0, green: 0 };
+          itemSpentMap[itemId].dollar += log.spent_dollar || 0;
+          itemSpentMap[itemId].red += log.spent_red || 0;
+          itemSpentMap[itemId].green += log.spent_green || 0;
         });
 
-        // Update global finance summary UI
-        document.getElementById('financeDollar').textContent = '$' + formatNumber(totalDollar);
-        document.getElementById('financeRed').textContent = formatNumber(totalRed);
-        document.getElementById('financeGreen').textContent = formatNumber(totalGreen);
-
+        updateWalletUI();
         renderDashboard();
       } catch (e) {
         content.innerHTML = emptyHTML('ti-alert-circle', 'ไม่สามารถโหลดข้อมูลได้');
         showToast('โหลดข้อมูลล้มเหลว: ' + e.message);
+      }
+    }
+
+    // ===== Wallet =====
+    function updateWalletUI() {
+      // Dollar
+      document.getElementById('financeDollar').textContent = '$' + formatNumber(walletBalance.dollar);
+      // Red
+      document.getElementById('financeRed').textContent = formatNumber(walletBalance.red);
+      // Green
+      document.getElementById('financeGreen').textContent = formatNumber(walletBalance.green);
+
+      // Show spent hint per currency from itemSpentMap
+      const totDollar = Object.values(itemSpentMap).reduce((s, v) => s + v.dollar, 0);
+      const totRed    = Object.values(itemSpentMap).reduce((s, v) => s + v.red, 0);
+      const totGreen  = Object.values(itemSpentMap).reduce((s, v) => s + v.green, 0);
+
+      const hintD = document.getElementById('hintDollar');
+      const hintR = document.getElementById('hintRed');
+      const hintG = document.getElementById('hintGreen');
+      if (hintD) hintD.textContent = totDollar > 0 ? `ใช้สะสม: $${formatNumber(totDollar)}` : '';
+      if (hintR) hintR.textContent = totRed    > 0 ? `ใช้สะสม: ${formatNumber(totRed)}`   : '';
+      if (hintG) hintG.textContent = totGreen  > 0 ? `ใช้สะสม: ${formatNumber(totGreen)}`  : '';
+    }
+
+    function startEditWallet(field, e) {
+      if (e) e.stopPropagation();
+      // If already editing this field, ignore
+      if (walletEditingField === field) return;
+      // Commit any open edit first
+      if (walletEditingField) commitEditWallet(walletEditingField);
+
+      walletEditingField = field;
+      const cardId = field === 'dollar' ? 'cardDollar' : field === 'red' ? 'cardRed' : 'cardGreen';
+      const valueId = field === 'dollar' ? 'financeDollar' : field === 'red' ? 'financeRed' : 'financeGreen';
+      const card = document.getElementById(cardId);
+      const valueEl = document.getElementById(valueId);
+      const prefix = field === 'dollar' ? '$' : '';
+
+      card.classList.add('editing');
+
+      // Replace value display with input
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.className = 'finance-input';
+      input.value = walletBalance[field] || 0;
+      input.id = 'walletInput_' + field;
+
+      valueEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const commit = () => commitEditWallet(field);
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+        if (ev.key === 'Escape') { ev.preventDefault(); cancelEditWallet(field); }
+      });
+      // Prevent card click from re-triggering while input is active
+      input.addEventListener('click', (ev) => ev.stopPropagation());
+    }
+
+    function cancelEditWallet(field) {
+      const valueId = field === 'dollar' ? 'financeDollar' : field === 'red' ? 'financeRed' : 'financeGreen';
+      const cardId  = field === 'dollar' ? 'cardDollar'   : field === 'red' ? 'cardRed'    : 'cardGreen';
+      const input = document.getElementById('walletInput_' + field);
+      if (!input) return;
+      walletEditingField = null;
+
+      const span = document.createElement('div');
+      span.className = 'finance-value';
+      span.id = valueId;
+      span.textContent = (field === 'dollar' ? '$' : '') + formatNumber(walletBalance[field]);
+      input.replaceWith(span);
+      document.getElementById(cardId).classList.remove('editing');
+    }
+
+    async function commitEditWallet(field) {
+      const input = document.getElementById('walletInput_' + field);
+      if (!input) return;
+      const newVal = Math.max(0, parseInt(input.value) || 0);
+      walletBalance[field] = newVal;
+      walletEditingField = null;
+
+      const valueId = field === 'dollar' ? 'financeDollar' : field === 'red' ? 'financeRed' : 'financeGreen';
+      const cardId  = field === 'dollar' ? 'cardDollar'   : field === 'red' ? 'cardRed'    : 'cardGreen';
+
+      const span = document.createElement('div');
+      span.className = 'finance-value';
+      span.id = valueId;
+      span.textContent = (field === 'dollar' ? '$' : '') + formatNumber(newVal);
+      input.replaceWith(span);
+      document.getElementById(cardId).classList.remove('editing');
+
+      await saveWallet();
+    }
+
+    async function resetWallet(field, e) {
+      if (e) e.stopPropagation();
+      // Cancel any active edit
+      if (walletEditingField === field) cancelEditWallet(field);
+      walletBalance[field] = 0;
+      updateWalletUI();
+      await saveWallet();
+      showToast(`รีเซ็ต${field === 'dollar' ? 'ดอลลาร์' : field === 'red' ? 'เงินแดง' : 'เงินเขียว'}เป็น 0 แล้ว`, 'success');
+    }
+
+    async function saveWallet() {
+      try {
+        const { error } = await db.from('wallet').upsert({
+          id: 1,
+          dollar: walletBalance.dollar,
+          red: walletBalance.red,
+          green: walletBalance.green
+        }, { onConflict: 'id' });
+        if (error) throw error;
+      } catch (e) {
+        showToast('บันทึกเงินไม่สำเร็จ: ' + e.message);
       }
     }
 
