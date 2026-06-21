@@ -183,11 +183,8 @@
     }
 
     .btn-icon:disabled {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
-      border-color: var(--border) !important;
-      color: var(--text-tertiary) !important;
-      background: transparent !important;
     }
 
     /* ===== Tabs ===== */
@@ -446,6 +443,7 @@
       transition: all var(--transition);
       gap: 10px;
       min-height: 40px;
+      flex-shrink: 0;
     }
 
     .dashboard-item-row:hover {
@@ -546,6 +544,7 @@
       transition: all var(--transition);
       gap: 8px;
       min-height: 40px;
+      flex-shrink: 0;
     }
 
     .stock-item-row:hover {
@@ -625,33 +624,31 @@
     }
 
     .btn-qty-reset {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0 8px;
+      width: 26px;
       height: 26px;
       border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--danger-dim);
-      color: var(--danger);
-      font-size: 0.72rem;
-      font-weight: 600;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
       cursor: pointer;
       transition: all var(--transition);
+      background: var(--danger-dim);
+      color: var(--danger);
+      flex-shrink: 0;
     }
 
     .btn-qty-reset:hover:not(:disabled) {
       background: var(--danger);
       color: #fff;
-      border-color: var(--danger);
     }
 
     .btn-qty-reset:disabled {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
       background: var(--bg-elevated);
       color: var(--text-tertiary);
-      border-color: var(--border);
     }
 
     .badge-illegal {
@@ -2701,7 +2698,7 @@
                     <i class="ti ti-minus"></i>
                   </button>
                   <button class="btn-qty-reset" onclick="resetItemQty(${item.id})" title="รีเซ็ตจำนวนเป็น 0" ${isZero ? 'disabled' : ''}>
-                    <i class="ti ti-refresh"></i> รีเซ็ต
+                    <i class="ti ti-rotate-2"></i>
                   </button>
                 </div>
               </div>`;
