@@ -2172,7 +2172,7 @@
     function updatePreview() {
       const { item, action } = modalState;
       if (!item) return;
-      const delta = parseInt(qtyInput.value) || 1;
+      const delta = Math.max(1, parseInt(qtyInput.value) || 1);
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
@@ -2218,7 +2218,7 @@
     modalApplyBtn.addEventListener('click', async () => {
       const { item, action } = modalState;
       if (!item) return;
-      const delta = parseInt(qtyInput.value) || 1;
+      const delta = Math.max(1, parseInt(qtyInput.value) || 1);
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
@@ -2505,10 +2505,10 @@
       const name = document.getElementById('addName').value.trim();
       const category = document.getElementById('addCategory').value;
       const isIllegal = document.getElementById('addIsIllegal').checked;
-      const priceDollar = parseInt(document.getElementById('addPriceDollar').value) || 0;
-      const priceRed = parseInt(document.getElementById('addPriceRed').value) || 0;
-      const priceGreen = parseInt(document.getElementById('addPriceGreen').value) || 0;
-      const qty = parseInt(document.getElementById('addQty').value) || 0;
+      const priceDollar = Math.max(0, parseInt(document.getElementById('addPriceDollar').value) || 0);
+      const priceRed = Math.max(0, parseInt(document.getElementById('addPriceRed').value) || 0);
+      const priceGreen = Math.max(0, parseInt(document.getElementById('addPriceGreen').value) || 0);
+      const qty = Math.max(0, parseInt(document.getElementById('addQty').value) || 0);
 
       if (!name) {
         showToast('กรุณาระบุชื่อไอเทม');
@@ -2610,9 +2610,9 @@
       const name = document.getElementById('editName').value.trim();
       const category = document.getElementById('editCategory').value;
       const isIllegal = document.getElementById('editIsIllegal').checked;
-      const priceDollar = parseInt(document.getElementById('editPriceDollar').value) || 0;
-      const priceRed = parseInt(document.getElementById('editPriceRed').value) || 0;
-      const priceGreen = parseInt(document.getElementById('editPriceGreen').value) || 0;
+      const priceDollar = Math.max(0, parseInt(document.getElementById('editPriceDollar').value) || 0);
+      const priceRed = Math.max(0, parseInt(document.getElementById('editPriceRed').value) || 0);
+      const priceGreen = Math.max(0, parseInt(document.getElementById('editPriceGreen').value) || 0);
 
       if (!name) {
         showToast('กรุณาระบุชื่อไอเทม');
