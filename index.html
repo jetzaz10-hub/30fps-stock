@@ -615,6 +615,36 @@
       color: #fff;
     }
 
+    .btn-qty-reset {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 8px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--danger-dim);
+      color: var(--danger);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-qty-reset:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+
+    .btn-qty-reset:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: var(--bg-elevated);
+      color: var(--text-tertiary);
+      border-color: var(--border);
+    }
+
     .badge-illegal {
       font-size: .62rem;
       background: var(--danger);
@@ -1377,36 +1407,28 @@
     }
 
     .finance-reset-btn {
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--bg-elevated);
-      color: var(--text-tertiary);
-      font-size: .85rem;
-      line-height: 1;
-      cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      opacity: 0;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--danger-dim);
+      background: var(--danger-dim);
+      color: var(--danger);
+      font-size: .75rem;
+      font-weight: 600;
+      cursor: pointer;
       transition: all var(--transition);
-      padding: 0;
       flex-shrink: 0;
-    }
-
-    .finance-card:hover .finance-reset-btn {
-      opacity: 1;
+      white-space: nowrap;
+      align-self: center;
+      margin-left: auto;
     }
 
     .finance-reset-btn:hover {
-      background: var(--danger-dim);
+      background: var(--danger);
       border-color: var(--danger);
-      color: var(--danger);
-      transform: scale(1.15);
+      color: #fff;
     }
 
     /* ===== Form styles for Modals ===== */
@@ -1687,7 +1709,9 @@
             <div class="finance-label">เงินดอลลาร์คงเหลือ</div>
             <div class="finance-hint" id="hintDollar"></div>
           </div>
-          <button class="finance-reset-btn" onclick="resetWallet('dollar', event)" title="รีเซ็ตเป็น 0">×</button>
+          <button class="finance-reset-btn" onclick="resetWallet('dollar', event)" title="รีเซ็ตเป็น 0">
+            <i class="ti ti-refresh"></i> รีเซ็ต
+          </button>
         </div>
         <div class="finance-card" id="cardRed" onclick="startEditWallet('red', event)">
           <div class="finance-icon redmoney"><i class="ti ti-coin"></i></div>
@@ -1699,7 +1723,9 @@
             <div class="finance-label">เงินแดงคงเหลือ</div>
             <div class="finance-hint" id="hintRed"></div>
           </div>
-          <button class="finance-reset-btn" onclick="resetWallet('red', event)" title="รีเซ็ตเป็น 0">×</button>
+          <button class="finance-reset-btn" onclick="resetWallet('red', event)" title="รีเซ็ตเป็น 0">
+            <i class="ti ti-refresh"></i> รีเซ็ต
+          </button>
         </div>
         <div class="finance-card" id="cardGreen" onclick="startEditWallet('green', event)">
           <div class="finance-icon greenmoney"><i class="ti ti-coin"></i></div>
@@ -1711,7 +1737,9 @@
             <div class="finance-label">เงินเขียวคงเหลือ</div>
             <div class="finance-hint" id="hintGreen"></div>
           </div>
-          <button class="finance-reset-btn" onclick="resetWallet('green', event)" title="รีเซ็ตเป็น 0">×</button>
+          <button class="finance-reset-btn" onclick="resetWallet('green', event)" title="รีเซ็ตเป็น 0">
+            <i class="ti ti-refresh"></i> รีเซ็ต
+          </button>
         </div>
       </div>
       <div id="dashboardContent">
@@ -2248,6 +2276,55 @@
       }
     }
 
+    async function resetItemQty(itemId) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+      if (!confirm(`คุณต้องการรีเซ็ตจำนวนของ "${item.name}" เป็น 0 ใช่หรือไม่?`)) {
+        return;
+      }
+      
+      try {
+        const before = item.quantity || 0;
+        if (before === 0) return; // already 0
+        
+        // Update item quantity to 0
+        const { error: updateErr } = await db
+          .from('items')
+          .update({ quantity: 0 })
+          .eq('id', itemId);
+        if (updateErr) throw updateErr;
+
+        // Insert log for the reset action
+        const { error: logErr } = await db
+          .from('stock_log')
+          .insert({
+            item_id: item.id,
+            item_name: item.name,
+            action: 'remove',
+            quantity_changed: before,
+            quantity_before: before,
+            quantity_after: 0,
+            spent_dollar: 0,
+            spent_red: 0,
+            spent_green: 0,
+            note: 'รีเซ็ตจำนวนเป็น 0'
+          });
+        if (logErr) throw logErr;
+
+        // Update local state
+        item.quantity = 0;
+        showToast(`รีเซ็ตจำนวน ${item.name} เป็น 0 สำเร็จ`, 'success');
+        
+        // Refresh views
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('รีเซ็ตจำนวนล้มเหลว: ' + e.message);
+      }
+    }
+
     function renderDashboard() {
       // Stats
       const totalTypes = allItems.length;
@@ -2421,6 +2498,9 @@
                   </button>
                   <button class="btn-qty-action remove" onclick="openModal(${item.id}, 'remove')" title="นำออก">
                     <i class="ti ti-minus"></i>
+                  </button>
+                  <button class="btn-qty-reset" onclick="resetItemQty(${item.id})" title="รีเซ็ตจำนวนเป็น 0" ${isZero ? 'disabled' : ''}>
+                    <i class="ti ti-refresh"></i> รีเซ็ต
                   </button>
                 </div>
               </div>`;
