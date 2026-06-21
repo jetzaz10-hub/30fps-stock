@@ -85,21 +85,28 @@
       font-family: var(--font-main);
       background: var(--bg-root);
       color: var(--text-primary);
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
+      line-height: 1.5;
+      height: 100vh;
+      overflow: hidden;
       transition: background var(--transition), color var(--transition);
+      display: flex;
+      flex-direction: column;
     }
 
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
     ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
     /* ===== Layout ===== */
     .app-shell {
-      max-width: 1200px;
+      max-width: 1600px;
       margin: 0 auto;
-      padding: 0 20px 40px;
+      padding: 0 24px 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      width: 100%;
     }
 
     /* ===== Header ===== */
@@ -110,17 +117,18 @@
       backdrop-filter: blur(20px) saturate(1.2);
       background: var(--glass);
       border-bottom: 1px solid var(--glass-border);
-      padding: 0 20px;
+      padding: 0 24px;
       transition: background var(--transition);
+      flex-shrink: 0;
     }
 
     .header-inner {
-      max-width: 1200px;
+      max-width: 1600px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 64px;
+      height: 60px;
     }
 
     .brand {
@@ -176,9 +184,10 @@
     .tab-bar {
       display: flex;
       gap: 4px;
-      padding: 16px 0 0;
-      margin-bottom: 24px;
+      padding: 12px 0 0;
+      margin-bottom: 16px;
       border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
     }
 
     .tab-btn {
@@ -212,8 +221,14 @@
 
     .tab-btn i { font-size: 1.1rem; }
 
-    .tab-panel { display: none; animation: fadeUp .3s ease; }
-    .tab-panel.active { display: block; }
+    .tab-panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+      animation: fadeUp .25s ease;
+    }
+    .tab-panel.active { display: flex; }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
@@ -224,20 +239,20 @@
     .stats-bar {
       display: flex;
       gap: 12px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+      margin-bottom: 16px;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
     }
 
     .stat-card {
       flex: 1;
-      min-width: 160px;
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 18px 20px;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       transition: all var(--transition);
     }
 
@@ -247,13 +262,13 @@
     }
 
     .stat-icon {
-      width: 44px;
-      height: 44px;
+      width: 38px;
+      height: 38px;
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
+      font-size: 1.15rem;
     }
 
     .stat-icon.teal { background: var(--accent-dim); color: var(--accent); }
@@ -263,192 +278,222 @@
     .stat-info { display: flex; flex-direction: column; }
 
     .stat-value {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       font-weight: 700;
       line-height: 1.2;
       font-family: var(--font-mono);
     }
 
     .stat-label {
-      font-size: .78rem;
+      font-size: .75rem;
       color: var(--text-tertiary);
       font-weight: 500;
     }
 
-    /* ===== Item Cards Grid ===== */
-    .item-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 14px;
+    /* ===== Categories Grid & Layout (No Page Scroll) ===== */
+    #dashboardContent, #stockContent {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
     }
 
-    .item-card {
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .category-section {
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 18px 20px;
+      padding: 12px;
       display: flex;
-      align-items: center;
-      gap: 14px;
-      transition: all var(--transition);
-      position: relative;
+      flex-direction: column;
       overflow: hidden;
+      height: 100%;
+      transition: border-color var(--transition);
     }
 
-    .item-card::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      border-radius: 4px 0 0 4px;
-      background: var(--accent);
-      transition: background var(--transition);
-    }
-
-    .item-card.illegal::before { background: var(--danger); }
-
-    .item-card:hover {
+    .category-section:hover {
       border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .item-card.illegal:hover { border-color: var(--danger); }
-
-    .item-card.zero { opacity: .4; }
-
-    .card-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: var(--radius-sm);
-      background: var(--accent-dim);
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
-      flex-shrink: 0;
-    }
-
-    .item-card.illegal .card-icon {
-      background: var(--danger-dim);
-      color: var(--danger);
-    }
-
-    .card-body { flex: 1; min-width: 0; }
-
-    .card-name {
-      font-size: .9rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .badge-illegal {
-      font-size: .65rem;
-      background: var(--danger);
-      color: #fff;
-      padding: 2px 7px;
-      border-radius: 20px;
-      font-weight: 600;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .card-qty {
-      font-family: var(--font-mono);
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--accent);
-      line-height: 1.3;
-    }
-
-    .item-card.illegal .card-qty { color: var(--danger); }
-
-    .card-category {
-      font-size: .72rem;
-      color: var(--text-tertiary);
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      font-weight: 500;
-    }
-
-    /* ===== Category Sections ===== */
-    .category-section {
-      margin-bottom: 28px;
     }
 
     .category-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
       border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
     }
 
     .category-header-icon {
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.15rem;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
 
     .category-header-label {
-      font-size: 1rem;
+      font-size: 0.88rem;
       font-weight: 700;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .category-header-count {
-      font-size: .75rem;
+      font-size: .7rem;
       color: var(--text-tertiary);
       background: var(--bg-elevated);
-      padding: 2px 10px;
+      padding: 2px 8px;
       border-radius: 20px;
       font-weight: 500;
       font-family: var(--font-mono);
+      white-space: nowrap;
     }
 
-    /* Category colors */
+    .category-item-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+
+    /* Category colors and hover styles */
     .cat-gun .category-header-icon { background: rgba(244,91,105,.12); color: #f45b69; }
-    .cat-gun .card-icon { background: rgba(244,91,105,.12); color: #f45b69; }
+    .cat-gun .item-row-qty { color: #f45b69; }
+    .cat-gun .stock-item-qty { color: #f45b69; }
+    .cat-gun:hover { border-color: #f45b69; }
+    .cat-gun .dashboard-item-row:hover, .cat-gun .stock-item-row:hover { border-color: #f45b69; }
+
     .cat-ammo .category-header-icon { background: rgba(240,169,64,.12); color: #f0a940; }
-    .cat-ammo .card-icon { background: rgba(240,169,64,.12); color: #f0a940; }
+    .cat-ammo .item-row-qty { color: #f0a940; }
+    .cat-ammo .stock-item-qty { color: #f0a940; }
+    .cat-ammo:hover { border-color: #f0a940; }
+    .cat-ammo .dashboard-item-row:hover, .cat-ammo .stock-item-row:hover { border-color: #f0a940; }
+
     .cat-drug .category-header-icon { background: rgba(190,80,220,.12); color: #be50dc; }
-    .cat-drug .card-icon { background: rgba(190,80,220,.12); color: #be50dc; }
+    .cat-drug .item-row-qty { color: #be50dc; }
+    .cat-drug .stock-item-qty { color: #be50dc; }
+    .cat-drug:hover { border-color: #be50dc; }
+    .cat-drug .dashboard-item-row:hover, .cat-drug .stock-item-row:hover { border-color: #be50dc; }
+
     .cat-gold .category-header-icon { background: rgba(250,204,21,.12); color: #facc15; }
-    .cat-gold .card-icon { background: rgba(250,204,21,.12); color: #facc15; }
+    .cat-gold .item-row-qty { color: #facc15; }
+    .cat-gold .stock-item-qty { color: #facc15; }
+    .cat-gold:hover { border-color: #facc15; }
+    .cat-gold .dashboard-item-row:hover, .cat-gold .stock-item-row:hover { border-color: #facc15; }
+
     .cat-armor .category-header-icon { background: rgba(56,189,248,.12); color: #38bdf8; }
-    .cat-armor .card-icon { background: rgba(56,189,248,.12); color: #38bdf8; }
+    .cat-armor .item-row-qty { color: #38bdf8; }
+    .cat-armor .stock-item-qty { color: #38bdf8; }
+    .cat-armor:hover { border-color: #38bdf8; }
+    .cat-armor .dashboard-item-row:hover, .cat-armor .stock-item-row:hover { border-color: #38bdf8; }
+
     .cat-material .category-header-icon { background: rgba(132,204,22,.12); color: #84cc16; }
-    .cat-material .card-icon { background: rgba(132,204,22,.12); color: #84cc16; }
+    .cat-material .item-row-qty { color: #84cc16; }
+    .cat-material .stock-item-qty { color: #84cc16; }
+    .cat-material:hover { border-color: #84cc16; }
+    .cat-material .dashboard-item-row:hover, .cat-material .stock-item-row:hover { border-color: #84cc16; }
+
     .cat-tool .category-header-icon { background: rgba(168,162,158,.12); color: #a8a29e; }
-    .cat-tool .card-icon { background: rgba(168,162,158,.12); color: #a8a29e; }
+    .cat-tool .item-row-qty { color: #a8a29e; }
+    .cat-tool .stock-item-qty { color: #a8a29e; }
+    .cat-tool:hover { border-color: #a8a29e; }
+    .cat-tool .dashboard-item-row:hover, .cat-tool .stock-item-row:hover { border-color: #a8a29e; }
+
     .cat-misc .category-header-icon { background: rgba(129,140,248,.12); color: #818cf8; }
-    .cat-misc .card-icon { background: rgba(129,140,248,.12); color: #818cf8; }
+    .cat-misc .item-row-qty { color: #818cf8; }
+    .cat-misc .stock-item-qty { color: #818cf8; }
+    .cat-misc:hover { border-color: #818cf8; }
+    .cat-misc .dashboard-item-row:hover, .cat-misc .stock-item-row:hover { border-color: #818cf8; }
 
-    .cat-gun .card-qty { color: #f45b69; }
-    .cat-ammo .card-qty { color: #f0a940; }
-    .cat-drug .card-qty { color: #be50dc; }
-    .cat-gold .card-qty { color: #facc15; }
-    .cat-armor .card-qty { color: #38bdf8; }
-    .cat-material .card-qty { color: #84cc16; }
-    .cat-tool .card-qty { color: #a8a29e; }
-    .cat-misc .card-qty { color: #818cf8; }
+    /* ===== Compact Dashboard Rows ===== */
+    .dashboard-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+      gap: 10px;
+      min-height: 40px;
+    }
 
-    /* ===== Stock Management ===== */
+    .dashboard-item-row:hover {
+      background: var(--bg-hover);
+      transform: translateX(2px);
+    }
+
+    .dashboard-item-row.zero { opacity: .45; }
+
+    .item-row-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .item-row-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-row-illegal-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--danger);
+      flex-shrink: 0;
+      display: inline-block;
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    .item-row-qty {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ===== Compact Stock Management Rows ===== */
+    .stock-toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .stock-toolbar .search-bar {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
     .search-bar {
       position: relative;
-      margin-bottom: 20px;
     }
 
     .search-bar i {
@@ -462,13 +507,13 @@
 
     .search-input {
       width: 100%;
-      padding: 12px 16px 12px 42px;
+      padding: 10px 16px 10px 42px;
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       background: var(--bg-surface);
       color: var(--text-primary);
       font-family: var(--font-main);
-      font-size: .9rem;
+      font-size: .88rem;
       transition: all var(--transition);
       outline: none;
     }
@@ -480,102 +525,104 @@
 
     .search-input::placeholder { color: var(--text-tertiary); }
 
-    .stock-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .stock-row {
+    .stock-item-row {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 14px 18px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      transition: all var(--transition);
-    }
-
-    .stock-row:hover {
-      border-color: var(--accent);
+      justify-content: space-between;
+      padding: 6px 8px 6px 10px;
       background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+      gap: 8px;
+      min-height: 40px;
     }
 
-    .stock-row-icon {
-      width: 38px;
-      height: 38px;
+    .stock-item-row:hover {
+      background: var(--bg-hover);
+    }
+
+    .stock-item-row.zero { opacity: .5; }
+
+    .stock-row-left {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .stock-item-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stock-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--text-tertiary);
+    }
+
+    .stock-item-qty {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .stock-row-actions {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-qty-action {
+      width: 26px;
+      height: 26px;
       border-radius: var(--radius-sm);
-      background: var(--accent-dim);
-      color: var(--accent);
+      border: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-
-    .stock-row.illegal .stock-row-icon {
-      background: var(--danger-dim);
-      color: var(--danger);
-    }
-
-    .stock-row-info { flex: 1; min-width: 0; }
-
-    .stock-row-name {
-      font-weight: 600;
-      font-size: .88rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stock-row-qty {
-      font-size: .78rem;
-      color: var(--text-tertiary);
-      font-family: var(--font-mono);
-    }
-
-    .stock-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .btn-add, .btn-remove {
-      padding: 8px 14px;
-      border: 1px solid;
-      border-radius: var(--radius-sm);
-      font-family: var(--font-main);
-      font-size: .8rem;
-      font-weight: 600;
+      font-size: 0.75rem;
       cursor: pointer;
       transition: all var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 5px;
     }
 
-    .btn-add {
-      background: var(--accent-dim);
-      color: var(--accent);
-      border-color: transparent;
+    .btn-qty-action.add {
+      background: var(--success-dim);
+      color: var(--success);
     }
 
-    .btn-add:hover {
-      background: var(--accent);
+    .btn-qty-action.add:hover {
+      background: var(--success);
       color: #fff;
     }
 
-    .btn-remove {
+    .btn-qty-action.remove {
       background: var(--danger-dim);
       color: var(--danger);
-      border-color: transparent;
     }
 
-    .btn-remove:hover {
+    .btn-qty-action.remove:hover {
       background: var(--danger);
       color: #fff;
+    }
+
+    .badge-illegal {
+      font-size: .62rem;
+      background: var(--danger);
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 20px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     /* ===== Modal ===== */
@@ -827,11 +874,20 @@
     }
 
     /* ===== Log ===== */
+    #panel-log {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #panel-log.active { display: flex; }
+
     .log-toolbar {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
+      flex-shrink: 0;
     }
 
     .log-toolbar .search-bar { flex: 1; min-width: 200px; margin-bottom: 0; }
@@ -877,6 +933,13 @@
       color: #fff;
     }
 
+    #logContent {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      padding-right: 4px;
+    }
+
     .log-list {
       display: flex;
       flex-direction: column;
@@ -887,7 +950,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 14px 18px;
+      padding: 10px 14px;
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
@@ -900,12 +963,12 @@
     }
 
     .log-action-badge {
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 20px;
-      font-size: .72rem;
+      font-size: .7rem;
       font-weight: 700;
       flex-shrink: 0;
-      min-width: 52px;
+      min-width: 48px;
       text-align: center;
     }
 
@@ -923,11 +986,11 @@
 
     .log-item-name {
       font-weight: 600;
-      font-size: .88rem;
+      font-size: .85rem;
     }
 
     .log-detail {
-      font-size: .78rem;
+      font-size: .75rem;
       color: var(--text-tertiary);
       font-family: var(--font-mono);
       display: flex;
@@ -937,14 +1000,14 @@
     }
 
     .log-note {
-      font-size: .78rem;
+      font-size: .75rem;
       color: var(--text-secondary);
       font-style: italic;
       margin-top: 2px;
     }
 
     .log-time {
-      font-size: .75rem;
+      font-size: .72rem;
       color: var(--text-tertiary);
       font-family: var(--font-mono);
       white-space: nowrap;
@@ -954,17 +1017,17 @@
     .btn-load-more {
       display: block;
       width: 100%;
-      margin-top: 16px;
-      padding: 14px;
+      padding: 10px;
       border: 1px dashed var(--border);
       border-radius: var(--radius-md);
       background: transparent;
       color: var(--text-secondary);
       font-family: var(--font-main);
-      font-size: .88rem;
+      font-size: .82rem;
       font-weight: 500;
       cursor: pointer;
       transition: all var(--transition);
+      flex-shrink: 0;
     }
 
     .btn-load-more:hover {
@@ -979,13 +1042,14 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       gap: 12px;
+      flex: 1;
     }
 
     .spinner-lg {
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       border: 3px solid var(--border);
       border-top-color: var(--accent);
       border-radius: 50%;
@@ -995,18 +1059,23 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-text {
-      font-size: .85rem;
+      font-size: .82rem;
       color: var(--text-tertiary);
     }
 
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       color: var(--text-tertiary);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
-    .empty-state i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
-    .empty-state p { font-size: .9rem; }
+    .empty-state i { font-size: 2.2rem; margin-bottom: 10px; display: block; }
+    .empty-state p { font-size: .85rem; }
 
     /* ===== Toast ===== */
     .toast-container {
@@ -1020,15 +1089,15 @@
     }
 
     .toast {
-      padding: 14px 20px;
+      padding: 12px 18px;
       border-radius: var(--radius-md);
-      font-size: .85rem;
+      font-size: .82rem;
       font-weight: 500;
       display: flex;
       align-items: center;
       gap: 10px;
-      min-width: 280px;
-      max-width: 400px;
+      min-width: 260px;
+      max-width: 380px;
       box-shadow: var(--shadow-lg);
       animation: toastIn .3s ease;
       cursor: pointer;
@@ -1074,8 +1143,8 @@
       background: var(--bg-modal);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 28px;
-      max-width: 380px;
+      padding: 24px;
+      max-width: 360px;
       width: 100%;
       text-align: center;
       transform: scale(.92);
@@ -1086,28 +1155,28 @@
     .confirm-overlay.show .confirm-box { transform: scale(1); }
 
     .confirm-icon {
-      width: 56px;
-      height: 56px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       background: var(--danger-dim);
       color: var(--danger);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      margin: 0 auto 16px;
+      font-size: 1.3rem;
+      margin: 0 auto 12px;
     }
 
     .confirm-title {
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .confirm-text {
-      font-size: .85rem;
+      font-size: .82rem;
       color: var(--text-secondary);
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       line-height: 1.5;
     }
 
@@ -1153,19 +1222,52 @@
       border: 1px solid var(--border-subtle);
     }
 
-    /* ===== Mobile ===== */
+    /* ===== Responsive & Mobile ===== */
+    @media (max-width: 1200px) {
+      body {
+        height: auto;
+        overflow: auto;
+      }
+      .app-shell {
+        height: auto;
+        overflow: visible;
+      }
+      .tab-panel {
+        height: auto;
+        overflow: visible;
+      }
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto;
+        overflow: visible;
+        height: auto;
+      }
+      .category-section {
+        height: 350px;
+      }
+      .stats-bar {
+        flex-wrap: wrap;
+      }
+      .stat-card {
+        min-width: 160px;
+      }
+    }
+
     @media (max-width: 640px) {
       .tab-btn { padding: 10px 12px; font-size: .82rem; }
       .tab-btn span { display: none; }
-      .item-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .item-card { padding: 14px; }
-      .card-icon { width: 36px; height: 36px; font-size: 1rem; }
-      .card-qty { font-size: 1.2rem; }
-      .stat-card { padding: 14px; }
-      .stat-value { font-size: 1.2rem; }
-      .stock-row { flex-wrap: wrap; }
-      .stock-actions { width: 100%; }
-      .stock-actions .btn-add, .stock-actions .btn-remove { flex: 1; justify-content: center; }
+      .categories-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        overflow: visible;
+        height: auto;
+      }
+      .category-section {
+        height: auto;
+        max-height: 400px;
+      }
+      .stat-card { padding: 10px 12px; }
+      .stat-value { font-size: 1.15rem; }
       .log-entry { flex-wrap: wrap; gap: 8px; }
       .log-time { width: 100%; order: 3; }
       .log-toolbar { flex-direction: column; }
@@ -1174,8 +1276,167 @@
       .brand span { display: none; }
     }
 
-    @media (max-width: 400px) {
-      .item-grid { grid-template-columns: 1fr; }
+    /* ===== Financial Summary Bar ===== */
+    .finance-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+    }
+
+    .finance-card {
+      flex: 1;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all var(--transition);
+    }
+
+    .finance-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .finance-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .finance-icon.dollar { background: rgba(45,212,168,.12); color: var(--accent); }
+    .finance-icon.redmoney { background: rgba(244,91,105,.12); color: #f45b69; }
+    .finance-icon.greenmoney { background: rgba(132,204,22,.12); color: #84cc16; }
+
+    .finance-info { display: flex; flex-direction: column; }
+
+    .finance-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.1;
+      font-family: var(--font-mono);
+    }
+
+    .finance-label {
+      font-size: .7rem;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+
+    /* ===== Form styles for Modals ===== */
+    .form-group {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .form-label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: .88rem;
+      outline: none;
+      transition: all var(--transition);
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    .form-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: .85rem;
+      font-weight: 500;
+      margin-top: 6px;
+      text-align: left;
+    }
+
+    .form-toggle input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* ===== Compact Action Buttons ===== */
+    .btn-add-item-compact {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-add-item-compact:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .item-row-spent {
+      font-size: 0.7rem;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .spent-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .btn-danger-dim {
+      background: var(--danger-dim);
+      border-color: transparent;
+      color: var(--danger);
+    }
+    .btn-danger-dim:hover {
+      background: var(--danger);
+      color: #fff;
     }
   </style>
 </head>
@@ -1237,6 +1498,30 @@
           </div>
         </div>
       </div>
+      <!-- ===== Finance Summary Bar ===== -->
+      <div class="finance-bar" id="financeBar">
+        <div class="finance-card">
+          <div class="finance-icon dollar"><i class="ti ti-coin"></i></div>
+          <div class="finance-info">
+            <div class="finance-value" id="financeDollar">$0</div>
+            <div class="finance-label">ยอดซื้อดอลลาร์รวม</div>
+          </div>
+        </div>
+        <div class="finance-card">
+          <div class="finance-icon redmoney"><i class="ti ti-coin"></i></div>
+          <div class="finance-info">
+            <div class="finance-value" id="financeRed">0</div>
+            <div class="finance-label">ยอดซื้อเงินแดงรวม</div>
+          </div>
+        </div>
+        <div class="finance-card">
+          <div class="finance-icon greenmoney"><i class="ti ti-coin"></i></div>
+          <div class="finance-info">
+            <div class="finance-value" id="financeGreen">0</div>
+            <div class="finance-label">ยอดซื้อเงินเขียวรวม</div>
+          </div>
+        </div>
+      </div>
       <div id="dashboardContent">
         <div class="loading-wrap">
           <div class="spinner-lg"></div>
@@ -1247,9 +1532,11 @@
 
     <!-- ===== Stock Management ===== -->
     <section class="tab-panel" id="panel-stock" role="tabpanel">
-      <div class="search-bar">
-        <i class="ti ti-search"></i>
-        <input class="search-input" id="stockSearch" type="text" placeholder="ค้นหาไอเทม..." />
+      <div class="stock-toolbar">
+        <div class="search-bar">
+          <i class="ti ti-search"></i>
+          <input class="search-input" id="stockSearch" type="text" placeholder="ค้นหาไอเทม..." />
+        </div>
       </div>
       <div id="stockContent">
         <div class="loading-wrap">
@@ -1335,6 +1622,129 @@
     </div>
   </div>
 
+  <!-- ===== Add Item Modal ===== -->
+  <div class="modal-overlay" id="addItemModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">+ เพิ่มไอเทมใหม่</div>
+        <button class="modal-close" id="addItemClose"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="margin-top: 16px;">
+        <div class="form-group">
+          <label class="form-label" for="addName">ชื่อไอเทม</label>
+          <input class="form-input" id="addName" type="text" placeholder="ระบุชื่อไอเทม..." required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addCategory">หมวดหมู่</label>
+          <select class="form-select" id="addCategory">
+            <option value="gun">อาวุธปืน</option>
+            <option value="ammo">กระสุน</option>
+            <option value="drug">ยา / สารต้องห้าม</option>
+            <option value="gold">ทอง / ของมีค่า</option>
+            <option value="armor">เกราะ / ชุดป้องกัน</option>
+            <option value="tool">อุปกรณ์ / เครื่องมือ</option>
+            <option value="material">วัตถุดิบ</option>
+            <option value="misc">อื่นๆ</option>
+          </select>
+        </div>
+        <label class="form-toggle">
+          <input id="addIsIllegal" type="checkbox" />
+          <span>ไอเทมผิดกฎหมาย</span>
+        </label>
+        
+        <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+          <div class="form-label" style="margin-bottom: 8px;">ราคาสั่งซื้อ (ใส่เป็น 0 ได้)</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="addPriceDollar">ดอลลาร์ ($)</label>
+              <input class="form-input" id="addPriceDollar" type="number" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addPriceRed">เงินแดง</label>
+              <input class="form-input" id="addPriceRed" type="number" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addPriceGreen">เงินเขียว</label>
+              <input class="form-input" id="addPriceGreen" type="number" min="0" value="0" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 4px;">
+          <label class="form-label" for="addQty">จำนวนเริ่มต้นในคลัง</label>
+          <input class="form-input" id="addQty" type="number" min="0" value="0" />
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn-modal btn-cancel" id="addItemCancel">ยกเลิก</button>
+        <button class="btn-modal btn-apply-add" id="addItemSubmitBtn">
+          <span>เพิ่มไอเทม</span>
+          <div class="spinner" id="addItemSpinner" style="display:none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Edit Item Modal ===== -->
+  <div class="modal-overlay" id="editItemModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">แก้ไขไอเทม</div>
+        <button class="modal-close" id="editItemClose"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="margin-top: 16px;">
+        <input type="hidden" id="editItemId" />
+        <div class="form-group">
+          <label class="form-label" for="editName">ชื่อไอเทม</label>
+          <input class="form-input" id="editName" type="text" placeholder="ระบุชื่อไอเทม..." required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editCategory">หมวดหมู่</label>
+          <select class="form-select" id="editCategory">
+            <option value="gun">อาวุธปืน</option>
+            <option value="ammo">กระสุน</option>
+            <option value="drug">ยา / สารต้องห้าม</option>
+            <option value="gold">ทอง / ของมีค่า</option>
+            <option value="armor">เกราะ / ชุดป้องกัน</option>
+            <option value="tool">อุปกรณ์ / เครื่องมือ</option>
+            <option value="material">วัตถุดิบ</option>
+            <option value="misc">อื่นๆ</option>
+          </select>
+        </div>
+        <label class="form-toggle">
+          <input id="editIsIllegal" type="checkbox" />
+          <span>ไอเทมผิดกฎหมาย</span>
+        </label>
+        
+        <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+          <div class="form-label" style="margin-bottom: 8px;">ราคาสั่งซื้อ (ใส่เป็น 0 ได้)</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="editPriceDollar">ดอลลาร์ ($)</label>
+              <input class="form-input" id="editPriceDollar" type="number" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editPriceRed">เงินแดง</label>
+              <input class="form-input" id="editPriceRed" type="number" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editPriceGreen">เงินเขียว</label>
+              <input class="form-input" id="editPriceGreen" type="number" min="0" value="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 24px;">
+        <button class="btn-modal btn-danger-dim" id="editItemDelete" style="flex: 0.5;">ลบไอเทม</button>
+        <button class="btn-modal btn-cancel" id="editItemCancel">ยกเลิก</button>
+        <button class="btn-modal btn-apply-add" id="editItemSubmitBtn">
+          <span>บันทึก</span>
+          <div class="spinner" id="editItemSpinner" style="display:none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Toast Container ===== -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -1350,25 +1760,25 @@
 
     // ===== Category Icon Map =====
     const CATEGORY_ICONS = {
-      gun: 'ti-gun',
+      gun: 'ti-crosshair',
       ammo: 'ti-bomb',
       drug: 'ti-pill',
-      gold: 'ti-diamond',
-      armor: 'ti-shield-checkered',
+      gold: 'ti-coins',
+      armor: 'ti-shield',
       material: 'ti-hammer',
-      tool: 'ti-settings',
+      tool: 'ti-tools',
       misc: 'ti-cube'
     };
 
     const CATEGORY_LABELS = {
-      gun: '🔫 อาวุธปืน',
-      ammo: '🎯 กระสุน',
-      drug: '💊 ยา / สารต้องห้าม',
-      gold: '💰 ทอง / ของมีค่า',
-      armor: '🛡️ เกราะ / ชุดป้องกัน',
-      material: '🪵 วัตถุดิบ',
-      tool: '⚙️ อุปกรณ์ / เครื่องมือ',
-      misc: '📦 อื่นๆ'
+      gun: 'อาวุธปืน',
+      ammo: 'กระสุน',
+      drug: 'ยา / สารต้องห้าม',
+      gold: 'ทอง / ของมีค่า',
+      armor: 'เกราะ / ชุดป้องกัน',
+      material: 'วัตถุดิบ',
+      tool: 'อุปกรณ์ / เครื่องมือ',
+      misc: 'อื่นๆ'
     };
 
     // ลำดับ category ที่จะแสดง
@@ -1389,6 +1799,7 @@
     let logHasMore = true;
     const LOG_PER_PAGE = 20;
     let modalState = { item: null, action: null };
+    let itemSpentMap = {};
 
     // ===== Theme =====
     const themeToggle = document.getElementById('themeToggle');
@@ -1469,9 +1880,47 @@
       const content = document.getElementById('dashboardContent');
       content.innerHTML = loadingHTML();
       try {
-        const { data, error } = await db.from('items').select('*').order('name');
-        if (error) throw error;
-        allItems = data || [];
+        // Fetch items
+        const { data: itemsData, error: itemsErr } = await db.from('items').select('*').order('name');
+        if (itemsErr) throw itemsErr;
+        allItems = itemsData || [];
+
+        // Fetch logs for spent calculations (only action = 'add')
+        const { data: logsData, error: logsErr } = await db
+          .from('stock_log')
+          .select('item_id, spent_dollar, spent_red, spent_green')
+          .eq('action', 'add');
+        if (logsErr) throw logsErr;
+
+        // Reset spent map and global totals
+        itemSpentMap = {};
+        let totalDollar = 0;
+        let totalRed = 0;
+        let totalGreen = 0;
+
+        (logsData || []).forEach(log => {
+          const itemId = log.item_id;
+          if (!itemSpentMap[itemId]) {
+            itemSpentMap[itemId] = { dollar: 0, red: 0, green: 0 };
+          }
+          const sd = log.spent_dollar || 0;
+          const sr = log.spent_red || 0;
+          const sg = log.spent_green || 0;
+
+          itemSpentMap[itemId].dollar += sd;
+          itemSpentMap[itemId].red += sr;
+          itemSpentMap[itemId].green += sg;
+
+          totalDollar += sd;
+          totalRed += sr;
+          totalGreen += sg;
+        });
+
+        // Update global finance summary UI
+        document.getElementById('financeDollar').textContent = '$' + formatNumber(totalDollar);
+        document.getElementById('financeRed').textContent = formatNumber(totalRed);
+        document.getElementById('financeGreen').textContent = formatNumber(totalGreen);
+
         renderDashboard();
       } catch (e) {
         content.innerHTML = emptyHTML('ti-alert-circle', 'ไม่สามารถโหลดข้อมูลได้');
@@ -1503,38 +1952,53 @@
         grouped[cat].push(item);
       });
 
-      // เรียงตาม CATEGORY_ORDER
-      const sortedCats = CATEGORY_ORDER.filter(c => grouped[c]);
-      // เพิ่ม category ที่ไม่อยู่ใน ORDER
+      // ใช้ลำดับจาก CATEGORY_ORDER เสมอเพื่อให้ตำแหน่งคงที่และสวยงาม
+      const finalCats = [...CATEGORY_ORDER];
+      // เพิ่ม category อื่นๆ ที่ไม่อยู่ใน ORDER เผื่อมีใน DB
       Object.keys(grouped).forEach(c => {
-        if (!sortedCats.includes(c)) sortedCats.push(c);
+        if (!finalCats.includes(c)) finalCats.push(c);
       });
 
-      const sections = sortedCats.map(cat => {
-        const items = grouped[cat];
+      const sections = finalCats.map(cat => {
+        const items = grouped[cat] || [];
         const icon = getCategoryIcon(cat);
         const label = getCategoryLabel(cat);
         const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
 
-        const cards = items.map(item => {
-          const isIllegal = item.is_illegal;
-          const isZero = (item.quantity || 0) === 0;
-          const classes = ['item-card'];
-          if (isIllegal) classes.push('illegal');
-          if (isZero) classes.push('zero');
+        let itemsHTML = '';
+        if (items.length === 0) {
+          itemsHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:.8rem;font-style:italic;padding:20px 0;">ไม่มีรายการ</div>`;
+        } else {
+          itemsHTML = items.map(item => {
+            const isIllegal = item.is_illegal;
+            const isZero = (item.quantity || 0) === 0;
+            const classes = ['dashboard-item-row'];
+            if (isZero) classes.push('zero');
 
-          return `
-            <div class="${classes.join(' ')}">
-              <div class="card-icon"><i class="ti ${icon}"></i></div>
-              <div class="card-body">
-                <div class="card-name">
-                  ${escapeHtml(item.name)}
-                  ${isIllegal ? '<span class="badge-illegal">ผิดกฎหมาย</span>' : ''}
+            // Calculate spent HTML
+            const spent = itemSpentMap[item.id] || { dollar: 0, red: 0, green: 0 };
+            let spentHTML = '';
+            if (spent.dollar > 0 || spent.red > 0 || spent.green > 0) {
+              const parts = [];
+              if (spent.dollar > 0) parts.push(`$${formatNumber(spent.dollar)}`);
+              if (spent.red > 0) parts.push(`<span style="color: #f45b69; font-weight: 500;">แดง ${formatNumber(spent.red)}</span>`);
+              if (spent.green > 0) parts.push(`<span style="color: #84cc16; font-weight: 500;">เขียว ${formatNumber(spent.green)}</span>`);
+              spentHTML = `<div class="item-row-spent" style="margin-top: 1px;">ซื้อสะสม: ${parts.join(' | ')}</div>`;
+            }
+
+            return `
+              <div class="${classes.join(' ')}">
+                <div class="item-row-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="item-row-name">${escapeHtml(item.name)}</div>
+                    ${isIllegal ? '<span class="item-row-illegal-indicator" title="ผิดกฎหมาย"></span>' : ''}
+                  </div>
+                  ${spentHTML}
                 </div>
-                <div class="card-qty">${formatNumber(item.quantity)}</div>
-              </div>
-            </div>`;
-        }).join('');
+                <div class="item-row-qty">${formatNumber(item.quantity)}</div>
+              </div>`;
+          }).join('');
+        }
 
         return `
           <div class="category-section cat-${cat}">
@@ -1543,11 +2007,11 @@
               <div class="category-header-label">${label}</div>
               <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ชิ้น</div>
             </div>
-            <div class="item-grid">${cards}</div>
+            <div class="category-item-list">${itemsHTML}</div>
           </div>`;
       }).join('');
 
-      content.innerHTML = sections;
+      content.innerHTML = `<div class="categories-grid">${sections}</div>`;
     }
 
     // ===== Stock Management =====
@@ -1571,36 +2035,91 @@
         ? allItems.filter(i => i.name.toLowerCase().includes(filter.toLowerCase()))
         : allItems;
 
-      if (filtered.length === 0) {
-        content.innerHTML = emptyHTML('ti-search-off', filter ? 'ไม่พบไอเทมที่ค้นหา' : 'ยังไม่มีไอเทมในระบบ');
+      if (allItems.length === 0) {
+        content.innerHTML = emptyHTML('ti-package-off', 'ยังไม่มีไอเทมในระบบ');
         return;
       }
 
-      const rows = filtered.map(item => {
-        const icon = getCategoryIcon(item.category);
-        const isIllegal = item.is_illegal;
+      if (filtered.length === 0 && filter) {
+        content.innerHTML = emptyHTML('ti-search-off', 'ไม่พบไอเทมที่ค้นหา');
+        return;
+      }
+
+      // จัดกลุ่มตาม category
+      const grouped = {};
+      filtered.forEach(item => {
+        const cat = (item.category || 'misc').toLowerCase();
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+
+      // ใช้ลำดับจาก CATEGORY_ORDER เสมอเพื่อให้ตำแหน่งคงที่และสวยงาม
+      const finalCats = [...CATEGORY_ORDER];
+      // เพิ่ม category อื่นๆ ที่ไม่อยู่ใน ORDER เผื่อมีใน DB
+      Object.keys(grouped).forEach(c => {
+        if (!finalCats.includes(c)) finalCats.push(c);
+      });
+
+      const sections = finalCats.map(cat => {
+        const items = grouped[cat] || [];
+        const icon = getCategoryIcon(cat);
+        const label = getCategoryLabel(cat);
+        const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+
+        let itemsHTML = '';
+        if (items.length === 0) {
+          itemsHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary);font-size:.8rem;font-style:italic;padding:20px 0;">ไม่มีรายการ</div>`;
+        } else {
+          itemsHTML = items.map(item => {
+            const isIllegal = item.is_illegal;
+            const isZero = (item.quantity || 0) === 0;
+            const classes = ['stock-item-row'];
+            if (isZero) classes.push('zero');
+
+            return `
+              <div class="${classes.join(' ')}">
+                <div class="stock-row-left">
+                  <div class="stock-item-name">
+                    ${escapeHtml(item.name)}
+                    ${isIllegal ? '<span class="badge-illegal">ผิดกฎหมาย</span>' : ''}
+                  </div>
+                  <div class="stock-item-meta" style="flex-wrap: wrap;">
+                    <span>คงเหลือ:</span>
+                    <span class="stock-item-qty">${formatNumber(item.quantity)}</span>
+                    <span>•</span>
+                    <span>ราคา: $${formatNumber(item.price_dollar)} / แดง ${formatNumber(item.price_red)} / เขียว ${formatNumber(item.price_green)}</span>
+                  </div>
+                </div>
+                <div class="stock-row-actions">
+                  <button class="btn-qty-action" onclick="openEditItemModal(${item.id})" title="แก้ไขราคา/ข้อมูล" style="background: var(--bg-elevated); color: var(--text-secondary);">
+                    <i class="ti ti-settings"></i>
+                  </button>
+                  <button class="btn-qty-action add" onclick="openModal(${item.id}, 'add')" title="เพิ่ม">
+                    <i class="ti ti-plus"></i>
+                  </button>
+                  <button class="btn-qty-action remove" onclick="openModal(${item.id}, 'remove')" title="นำออก">
+                    <i class="ti ti-minus"></i>
+                  </button>
+                </div>
+              </div>`;
+          }).join('');
+        }
+
         return `
-          <div class="stock-row${isIllegal ? ' illegal' : ''}">
-            <div class="stock-row-icon"><i class="ti ${icon}"></i></div>
-            <div class="stock-row-info">
-              <div class="stock-row-name">
-                ${escapeHtml(item.name)}
-                ${isIllegal ? '<span class="badge-illegal">ผิดกฎหมาย</span>' : ''}
-              </div>
-              <div class="stock-row-qty">คงเหลือ: ${formatNumber(item.quantity)}</div>
-            </div>
-            <div class="stock-actions">
-              <button class="btn-add" onclick="openModal(${item.id}, 'add')">
-                <i class="ti ti-plus"></i> เพิ่ม
-              </button>
-              <button class="btn-remove" onclick="openModal(${item.id}, 'remove')">
-                <i class="ti ti-minus"></i> นำออก
+          <div class="category-section cat-${cat}">
+            <div class="category-header">
+              <div class="category-header-icon"><i class="ti ${icon}"></i></div>
+              <div class="category-header-label">${label}</div>
+              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ชิ้น</div>
+              <button class="btn-add-item-compact" onclick="openAddItemModal('${cat}')" title="เพิ่มไอเทมใหม่ในหมวดหมู่นี้" style="margin-left: auto;">
+                <i class="ti ti-plus"></i>
               </button>
             </div>
+            <div class="category-item-list">${itemsHTML}</div>
           </div>`;
       }).join('');
 
-      content.innerHTML = `<div class="stock-list">${rows}</div>`;
+      content.innerHTML = `<div class="categories-grid">${sections}</div>`;
     }
 
     document.getElementById('stockSearch').addEventListener('input', (e) => {
@@ -1721,6 +2240,11 @@
           .eq('id', item.id);
         if (updateErr) throw updateErr;
 
+        // Calculate spent totals for transaction (only on 'add')
+        const spentDollar = action === 'add' ? delta * (item.price_dollar || 0) : 0;
+        const spentRed = action === 'add' ? delta * (item.price_red || 0) : 0;
+        const spentGreen = action === 'add' ? delta * (item.price_green || 0) : 0;
+
         // Insert log
         const { error: logErr } = await db
           .from('stock_log')
@@ -1730,7 +2254,10 @@
             action: action,
             quantity_changed: delta,
             quantity_before: before,
-            quantity_after: after
+            quantity_after: after,
+            spent_dollar: spentDollar,
+            spent_red: spentRed,
+            spent_green: spentGreen
           });
         if (logErr) throw logErr;
 
@@ -1741,8 +2268,10 @@
           'success'
         );
         closeModal();
-        renderDashboard();
-        renderStock(document.getElementById('stockSearch').value);
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
       } catch (e) {
         showToast('ดำเนินการไม่สำเร็จ: ' + e.message);
         applyBtnText.textContent = 'ยืนยัน';
@@ -1807,6 +2336,16 @@
       const entries = logData.map(log => {
         const isAdd = log.action === 'add';
         const sign = isAdd ? '+' : '−';
+        
+        let spentText = '';
+        if (isAdd && (log.spent_dollar > 0 || log.spent_red > 0 || log.spent_green > 0)) {
+          const parts = [];
+          if (log.spent_dollar > 0) parts.push(`$${formatNumber(log.spent_dollar)}`);
+          if (log.spent_red > 0) parts.push(`แดง ${formatNumber(log.spent_red)}`);
+          if (log.spent_green > 0) parts.push(`เขียว ${formatNumber(log.spent_green)}`);
+          spentText = ` <span style="color: var(--text-secondary); font-size: 0.72rem; font-weight: 500;">(ใช้เงิน: ${parts.join(' | ')})</span>`;
+        }
+
         return `
           <div class="log-entry">
             <span class="log-action-badge ${log.action}">${isAdd ? 'เพิ่ม' : 'นำออก'}</span>
@@ -1816,6 +2355,7 @@
                 <span>${sign}${formatNumber(log.quantity_changed)}</span>
                 <span>•</span>
                 <span>${formatNumber(log.quantity_before)} → ${formatNumber(log.quantity_after)}</span>
+                ${spentText}
               </div>
               ${log.note ? `<div class="log-note">${escapeHtml(log.note)}</div>` : ''}
             </div>
@@ -1932,10 +2472,226 @@
       };
     }
 
+    // ===== Add Item Modal Logic =====
+    const addItemModal = document.getElementById('addItemModal');
+    const addItemSpinner = document.getElementById('addItemSpinner');
+    const addItemSubmitBtn = document.getElementById('addItemSubmitBtn');
+
+    function openAddItemModal(category = '') {
+      document.getElementById('addName').value = '';
+      document.getElementById('addCategory').value = category || 'gun';
+      document.getElementById('addIsIllegal').checked = false;
+      document.getElementById('addPriceDollar').value = 0;
+      document.getElementById('addPriceRed').value = 0;
+      document.getElementById('addPriceGreen').value = 0;
+      document.getElementById('addQty').value = 0;
+
+      addItemSpinner.style.display = 'none';
+      addItemSubmitBtn.disabled = false;
+      addItemModal.classList.add('show');
+    }
+
+    function closeAddItemModal() {
+      addItemModal.classList.remove('show');
+    }
+
+    document.getElementById('addItemClose').addEventListener('click', closeAddItemModal);
+    document.getElementById('addItemCancel').addEventListener('click', closeAddItemModal);
+    addItemModal.addEventListener('click', (e) => {
+      if (e.target === addItemModal) closeAddItemModal();
+    });
+
+    addItemSubmitBtn.addEventListener('click', async () => {
+      const name = document.getElementById('addName').value.trim();
+      const category = document.getElementById('addCategory').value;
+      const isIllegal = document.getElementById('addIsIllegal').checked;
+      const priceDollar = parseInt(document.getElementById('addPriceDollar').value) || 0;
+      const priceRed = parseInt(document.getElementById('addPriceRed').value) || 0;
+      const priceGreen = parseInt(document.getElementById('addPriceGreen').value) || 0;
+      const qty = parseInt(document.getElementById('addQty').value) || 0;
+
+      if (!name) {
+        showToast('กรุณาระบุชื่อไอเทม');
+        return;
+      }
+
+      addItemSpinner.style.display = 'inline-block';
+      addItemSubmitBtn.disabled = true;
+
+      try {
+        // 1. Insert new item
+        const { data, error } = await db
+          .from('items')
+          .insert({
+            name,
+            category,
+            is_illegal: isIllegal,
+            price_dollar: priceDollar,
+            price_red: priceRed,
+            price_green: priceGreen,
+            quantity: qty
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // 2. Log initial qty if > 0
+        if (qty > 0) {
+          const spentDollar = qty * priceDollar;
+          const spentRed = qty * priceRed;
+          const spentGreen = qty * priceGreen;
+
+          const { error: logErr } = await db
+            .from('stock_log')
+            .insert({
+              item_id: data.id,
+              item_name: name,
+              action: 'add',
+              quantity_changed: qty,
+              quantity_before: 0,
+              quantity_after: qty,
+              spent_dollar: spentDollar,
+              spent_red: spentRed,
+              spent_green: spentGreen,
+              note: 'เพิ่มไอเทมใหม่พร้อมจำนวนเริ่มต้น'
+            });
+          if (logErr) throw logErr;
+        }
+
+        showToast(`เพิ่มไอเทม ${name} สำเร็จ`, 'success');
+        closeAddItemModal();
+        
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('ไม่สามารถเพิ่มไอเทมได้: ' + e.message);
+        addItemSpinner.style.display = 'none';
+        addItemSubmitBtn.disabled = false;
+      }
+    });
+
+    // ===== Edit Item Modal Logic =====
+    const editItemModal = document.getElementById('editItemModal');
+    const editItemSpinner = document.getElementById('editItemSpinner');
+    const editItemSubmitBtn = document.getElementById('editItemSubmitBtn');
+
+    function openEditItemModal(itemId) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('editItemId').value = item.id;
+      document.getElementById('editName').value = item.name;
+      document.getElementById('editCategory').value = item.category || 'misc';
+      document.getElementById('editIsIllegal').checked = !!item.is_illegal;
+      document.getElementById('editPriceDollar').value = item.price_dollar || 0;
+      document.getElementById('editPriceRed').value = item.price_red || 0;
+      document.getElementById('editPriceGreen').value = item.price_green || 0;
+
+      editItemSpinner.style.display = 'none';
+      editItemSubmitBtn.disabled = false;
+      editItemModal.classList.add('show');
+    }
+
+    function closeEditItemModal() {
+      editItemModal.classList.remove('show');
+    }
+
+    document.getElementById('editItemClose').addEventListener('click', closeEditItemModal);
+    document.getElementById('editItemCancel').addEventListener('click', closeEditItemModal);
+    editItemModal.addEventListener('click', (e) => {
+      if (e.target === editItemModal) closeEditItemModal();
+    });
+
+    editItemSubmitBtn.addEventListener('click', async () => {
+      const id = parseInt(document.getElementById('editItemId').value);
+      const name = document.getElementById('editName').value.trim();
+      const category = document.getElementById('editCategory').value;
+      const isIllegal = document.getElementById('editIsIllegal').checked;
+      const priceDollar = parseInt(document.getElementById('editPriceDollar').value) || 0;
+      const priceRed = parseInt(document.getElementById('editPriceRed').value) || 0;
+      const priceGreen = parseInt(document.getElementById('editPriceGreen').value) || 0;
+
+      if (!name) {
+        showToast('กรุณาระบุชื่อไอเทม');
+        return;
+      }
+
+      editItemSpinner.style.display = 'inline-block';
+      editItemSubmitBtn.disabled = true;
+
+      try {
+        const { error } = await db
+          .from('items')
+          .update({
+            name,
+            category,
+            is_illegal: isIllegal,
+            price_dollar: priceDollar,
+            price_red: priceRed,
+            price_green: priceGreen
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        showToast(`แก้ไขข้อมูลไอเทม ${name} สำเร็จ`, 'success');
+        closeEditItemModal();
+        
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('ไม่สามารถบันทึกข้อมูลได้: ' + e.message);
+        editItemSpinner.style.display = 'none';
+        editItemSubmitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('editItemDelete').addEventListener('click', async () => {
+      const id = parseInt(document.getElementById('editItemId').value);
+      const name = document.getElementById('editName').value;
+      
+      if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบไอเทม "${name}" ?\nการดำเนินการนี้จะลบประวัติและข้อมูลออกจากคลังทันที`)) {
+        return;
+      }
+
+      try {
+        // First delete logs relating to this item
+        const { error: logDeleteError } = await db
+          .from('stock_log')
+          .delete()
+          .eq('item_id', id);
+        if (logDeleteError) throw logDeleteError;
+
+        // Then delete the item
+        const { error: itemDeleteError } = await db
+          .from('items')
+          .delete()
+          .eq('id', id);
+        if (itemDeleteError) throw itemDeleteError;
+
+        showToast(`ลบไอเทม ${name} เรียบร้อยแล้ว`, 'success');
+        closeEditItemModal();
+
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('ไม่สามารถลบไอเทมได้: ' + e.message);
+      }
+    });
+
     // ===== Keyboard shortcuts =====
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal();
+        closeAddItemModal();
+        closeEditItemModal();
         confirmOverlay.classList.remove('show');
       }
     });
