@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     /* ===== CSS Variables ===== */
     :root {
@@ -179,6 +180,14 @@
       background: var(--bg-hover);
       color: var(--text-primary);
       border-color: var(--accent);
+    }
+
+    .btn-icon:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: var(--border) !important;
+      color: var(--text-tertiary) !important;
+      background: transparent !important;
     }
 
     /* ===== Tabs ===== */
@@ -1608,6 +1617,64 @@
     .login-error.show {
       display: block;
     }
+
+    /* ===== Scan Modal Styles ===== */
+    .upload-zone:hover {
+      border-color: var(--accent) !important;
+      background: var(--bg-hover) !important;
+    }
+    .upload-zone.dragover {
+      border-color: var(--accent) !important;
+      background: var(--accent-dim) !important;
+    }
+    .scan-result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      gap: 12px;
+    }
+    .scan-result-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+    .scan-result-name {
+      font-size: .85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .scan-result-meta {
+      font-size: .72rem;
+      color: var(--text-tertiary);
+    }
+    .scan-result-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .scan-result-input {
+      width: 80px;
+      text-align: center;
+      padding: 6px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: .85rem;
+      font-weight: 600;
+      outline: none;
+    }
+    .scan-result-input:focus {
+      border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -1648,6 +1715,12 @@
         <div class="realtime-status" id="realtimeStatus">
           <span class="realtime-dot"></span>Realtime
         </div>
+        <button class="btn-icon" id="undoBtn" title="เลิกทำ (Undo)" aria-label="เลิกทำ" disabled>
+          <i class="ti ti-arrow-back-up"></i>
+        </button>
+        <button class="btn-icon" id="redoBtn" title="ทำซ้ำ (Redo)" aria-label="ทำซ้ำ" disabled>
+          <i class="ti ti-arrow-forward-up"></i>
+        </button>
         <button class="btn-icon" id="themeToggle" title="สลับธีม" aria-label="สลับธีม">
           <i class="ti ti-moon-stars"></i>
         </button>
@@ -1757,6 +1830,9 @@
           <i class="ti ti-search"></i>
           <input class="search-input" id="stockSearch" type="text" placeholder="ค้นหาไอเทม..." />
         </div>
+        <button class="btn-modal btn-apply-add" id="scanInventoryBtn" style="flex: 0 0 auto; height: 38px; padding: 0 16px; font-size: .85rem; display: flex; align-items: center; gap: 6px;">
+          <i class="ti ti-camera"></i> สแกนรูปคลัง
+        </button>
       </div>
       <div id="stockContent">
         <div class="loading-wrap">
@@ -1824,6 +1900,71 @@
         <button class="btn-modal" id="modalApplyBtn">
           <span id="applyBtnText">ยืนยัน</span>
           <div class="spinner" id="applySpinner" style="display:none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Scan Inventory Modal ===== -->
+  <div class="modal-overlay" id="scanModal">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 8px;"><i class="ti ti-camera"></i> สแกนรูปภาพคลังสินค้า</div>
+        <button class="modal-close" id="scanModalClose"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-subtitle">อัปโหลดรูปภาพคลังสินค้าในเกมเพื่อประมวลผลข้อความและระบุจำนวนไอเทมอัตโนมัติ (ใช้ Tesseract.js)</div>
+      
+      <!-- Upload area -->
+      <div class="upload-zone" id="uploadZone" style="border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 30px 20px; text-align: center; cursor: pointer; transition: all var(--transition); background: var(--bg-elevated); display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <i class="ti ti-cloud-upload" style="font-size: 2.2rem; color: var(--accent);"></i>
+        <div style="font-size: .88rem; font-weight: 500;">คลิกหรือลากวางไฟล์รูปภาพที่นี่</div>
+        <div style="font-size: .75rem; color: var(--text-tertiary);">รองรับไฟล์รูปภาพคลังในเกม (.jpg, .png)</div>
+        <input type="file" id="scanFileInput" accept="image/*" style="display: none;" />
+      </div>
+
+      <!-- Preview and Action -->
+      <div id="scanPreviewContainer" style="display: none; margin-top: 16px; flex-direction: column; gap: 12px;">
+        <div style="position: relative; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); max-height: 200px; display: flex; justify-content: center; background: #000;">
+          <img id="scanImagePreview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; object-fit: contain;" />
+        </div>
+        <button class="btn-modal btn-apply-add" id="startScanBtn" style="height: 42px; width: 100%;">
+          <span>เริ่มทำการสแกนรูปภาพด้วย OCR</span>
+        </button>
+      </div>
+
+      <!-- Progress status -->
+      <div id="scanProgressContainer" style="display: none; margin-top: 16px; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; font-size: .8rem; font-weight: 500;">
+          <span id="scanStatusText" style="color: var(--accent);">กำลังเตรียมบอร์ดสแกน...</span>
+          <span id="scanProgressPercent" style="font-family: var(--font-mono);">0%</span>
+        </div>
+        <div style="height: 6px; width: 100%; background: var(--border); border-radius: 10px; overflow: hidden; position: relative;">
+          <div id="scanProgressBar" style="height: 100%; width: 0%; background: var(--accent); border-radius: 10px; transition: width 0.15s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Result detected items -->
+      <div id="scanResultsContainer" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 16px; flex-direction: column; gap: 12px; max-height: 280px; overflow-y: auto;">
+        <div style="font-size: .88rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+          <span>รายการไอเทมที่ตรวจพบ</span>
+          <span id="scanResultsCount" style="font-size: .75rem; font-weight: 500; color: var(--text-tertiary);">0 รายการ</span>
+        </div>
+
+        <div id="scanResultsList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Template rows will be inserted here -->
+        </div>
+
+        <!-- Debug Raw OCR Collapsible -->
+        <details style="margin-top: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px; background: var(--bg-elevated);">
+          <summary style="font-size: .75rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; user-select: none;">แสดงข้อความดิบที่ AI ตรวจจับได้ (Raw OCR Text)</summary>
+          <pre id="scanRawOcrText" style="margin-top: 8px; font-family: var(--font-mono); font-size: .72rem; color: var(--text-tertiary); max-height: 100px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; background: var(--bg-surface); padding: 8px; border-radius: 4px; border: 1px solid var(--border);"></pre>
+        </details>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 24px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+        <button class="btn-modal btn-cancel" id="scanCancelBtn">ยกเลิก</button>
+        <button class="btn-modal btn-apply-add" id="scanApplyBtn" disabled style="display: none; width: 100%;">
+          <span>อัปเดตสต็อกทั้งหมดที่ตรวจพบ</span>
         </button>
       </div>
     </div>
@@ -2035,6 +2176,30 @@
     let walletBalance = { dollar: 0, red: 0, green: 0 };
     let walletEditingField = null;
 
+    // ===== Undo / Redo History =====
+    let historyStack = [];
+    let historyPointer = -1;
+
+    function recordHistoryAction(action) {
+      if (historyPointer < historyStack.length - 1) {
+        historyStack = historyStack.slice(0, historyPointer + 1);
+      }
+      historyStack.push(action);
+      if (historyStack.length > 50) {
+        historyStack.shift();
+      } else {
+        historyPointer++;
+      }
+      updateHistoryButtons();
+    }
+
+    function updateHistoryButtons() {
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+      if (undoBtn) undoBtn.disabled = historyPointer < 0;
+      if (redoBtn) redoBtn.disabled = historyPointer >= historyStack.length - 1;
+    }
+
     // ===== Theme =====
     const themeToggle = document.getElementById('themeToggle');
     const html = document.documentElement;
@@ -2236,6 +2401,12 @@
       const input = document.getElementById('walletInput_' + field);
       if (!input) return;
       const newVal = Math.max(0, parseInt(input.value) || 0);
+      const oldVal = walletBalance[field] || 0;
+      if (oldVal === newVal) {
+        cancelEditWallet(field);
+        return;
+      }
+
       walletBalance[field] = newVal;
       walletEditingField = null;
 
@@ -2249,6 +2420,11 @@
       input.replaceWith(span);
       document.getElementById(cardId).classList.remove('editing');
 
+      recordHistoryAction({
+        type: 'wallet',
+        data: { field, oldVal, newVal }
+      });
+
       await saveWallet();
     }
 
@@ -2256,8 +2432,17 @@
       if (e) e.stopPropagation();
       // Cancel any active edit
       if (walletEditingField === field) cancelEditWallet(field);
+      const oldVal = walletBalance[field] || 0;
+      if (oldVal === 0) return; // already 0
+
       walletBalance[field] = 0;
       updateWalletUI();
+
+      recordHistoryAction({
+        type: 'wallet',
+        data: { field, oldVal, newVal: 0 }
+      });
+
       await saveWallet();
       showToast(`รีเซ็ต${field === 'dollar' ? 'ดอลลาร์' : field === 'red' ? 'เงินแดง' : 'เงินเขียว'}เป็น 0 แล้ว`, 'success');
     }
@@ -2310,6 +2495,22 @@
             note: 'รีเซ็ตจำนวนเป็น 0'
           });
         if (logErr) throw logErr;
+
+        recordHistoryAction({
+          type: 'quantity',
+          data: {
+            itemId: item.id,
+            itemName: item.name,
+            oldQty: before,
+            newQty: 0,
+            delta: before,
+            action: 'remove',
+            spentDollar: 0,
+            spentRed: 0,
+            spentGreen: 0,
+            note: 'รีเซ็ตจำนวนเป็น 0'
+          }
+        });
 
         // Update local state
         item.quantity = 0;
@@ -2690,6 +2891,21 @@
             spent_green: spentGreen
           });
         if (logErr) throw logErr;
+
+        recordHistoryAction({
+          type: 'quantity',
+          data: {
+            itemId: item.id,
+            itemName: item.name,
+            oldQty: before,
+            newQty: after,
+            delta,
+            action,
+            spentDollar,
+            spentRed,
+            spentGreen
+          }
+        });
 
         // Update local state
         item.quantity = after;
@@ -3128,6 +3344,7 @@
         closeModal();
         closeAddItemModal();
         closeEditItemModal();
+        closeScanModal();
         confirmOverlay.classList.remove('show');
       }
     });
@@ -3182,7 +3399,373 @@
       }
     });
 
+    // ===== Undo / Redo Execution Handlers =====
+    async function handleUndo() {
+      if (historyPointer < 0) return;
+      const action = historyStack[historyPointer];
+      historyPointer--;
+      updateHistoryButtons();
+
+      try {
+        if (action.type === 'wallet') {
+          const { field, oldVal } = action.data;
+          walletBalance[field] = oldVal;
+          updateWalletUI();
+          await saveWallet();
+          showToast(`เลิกทำ: ย้อนค่าเงิน${field === 'dollar' ? 'ดอลลาร์' : field === 'red' ? 'เงินแดง' : 'เงินเขียว'}เป็น ${formatNumber(oldVal)}`, 'success');
+        } else if (action.type === 'quantity') {
+          const { itemId, itemName, oldQty, newQty } = action.data;
+          const item = allItems.find(i => i.id === itemId);
+          if (!item) return;
+
+          const { error } = await db.from('items').update({ quantity: oldQty }).eq('id', itemId);
+          if (error) throw error;
+
+          await db.from('stock_log').insert({
+            item_id: itemId,
+            item_name: itemName,
+            action: oldQty > newQty ? 'add' : 'remove',
+            quantity_changed: Math.abs(oldQty - newQty),
+            quantity_before: newQty,
+            quantity_after: oldQty,
+            spent_dollar: 0,
+            spent_red: 0,
+            spent_green: 0,
+            note: 'เลิกทำ (Undo)'
+          });
+
+          item.quantity = oldQty;
+          showToast(`เลิกทำ: ย้อนจำนวน ${itemName} เป็น ${formatNumber(oldQty)}`, 'success');
+          await loadDashboard();
+          if (document.getElementById('panel-stock').classList.contains('active')) {
+            renderStock(document.getElementById('stockSearch').value);
+          }
+        }
+      } catch (e) {
+        showToast('เลิกทำไม่สำเร็จ: ' + e.message);
+      }
+    }
+
+    async function handleRedo() {
+      if (historyPointer >= historyStack.length - 1) return;
+      historyPointer++;
+      const action = historyStack[historyPointer];
+      updateHistoryButtons();
+
+      try {
+        if (action.type === 'wallet') {
+          const { field, newVal } = action.data;
+          walletBalance[field] = newVal;
+          updateWalletUI();
+          await saveWallet();
+          showToast(`ทำซ้ำ: เปลี่ยนค่าเงิน${field === 'dollar' ? 'ดอลลาร์' : field === 'red' ? 'เงินแดง' : 'เงินเขียว'}เป็น ${formatNumber(newVal)}`, 'success');
+        } else if (action.type === 'quantity') {
+          const { itemId, itemName, oldQty, newQty, spentDollar, spentRed, spentGreen, action: origAction, delta } = action.data;
+          const item = allItems.find(i => i.id === itemId);
+          if (!item) return;
+
+          const { error } = await db.from('items').update({ quantity: newQty }).eq('id', itemId);
+          if (error) throw error;
+
+          await db.from('stock_log').insert({
+            item_id: itemId,
+            item_name: itemName,
+            action: origAction,
+            quantity_changed: delta,
+            quantity_before: oldQty,
+            quantity_after: newQty,
+            spent_dollar: spentDollar || 0,
+            spent_red: spentRed || 0,
+            spent_green: spentGreen || 0,
+            note: 'ทำซ้ำ (Redo)'
+          });
+
+          item.quantity = newQty;
+          showToast(`ทำซ้ำ: เปลี่ยนจำนวน ${itemName} เป็น ${formatNumber(newQty)}`, 'success');
+          await loadDashboard();
+          if (document.getElementById('panel-stock').classList.contains('active')) {
+            renderStock(document.getElementById('stockSearch').value);
+          }
+        }
+      } catch (e) {
+        showToast('ทำซ้ำไม่สำเร็จ: ' + e.message);
+      }
+    }
+
+    // ===== Scan Modal Logic =====
+    async function openScanModal() {
+      document.getElementById('scanFileInput').value = '';
+      document.getElementById('scanImagePreview').src = '';
+      document.getElementById('scanPreviewContainer').style.display = 'none';
+      document.getElementById('scanProgressContainer').style.display = 'none';
+      document.getElementById('scanResultsContainer').style.display = 'none';
+      document.getElementById('scanApplyBtn').style.display = 'none';
+      document.getElementById('scanApplyBtn').disabled = true;
+      document.getElementById('scanModal').classList.add('show');
+    }
+
+    function closeScanModal() {
+      document.getElementById('scanModal').classList.remove('show');
+    }
+
+    // Set up upload zone drag & drop
+    const uploadZone = document.getElementById('uploadZone');
+    const scanFileInput = document.getElementById('scanFileInput');
+
+    if (uploadZone) {
+      uploadZone.addEventListener('click', () => scanFileInput.click());
+      
+      uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+      });
+
+      uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+      });
+
+      uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+          scanFileInput.files = e.dataTransfer.files;
+          handleFileSelect();
+        }
+      });
+    }
+
+    if (scanFileInput) {
+      scanFileInput.addEventListener('change', handleFileSelect);
+    }
+
+    function handleFileSelect() {
+      const file = scanFileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('scanImagePreview').src = e.target.result;
+        document.getElementById('scanPreviewContainer').style.display = 'flex';
+        document.getElementById('scanProgressContainer').style.display = 'none';
+        document.getElementById('scanResultsContainer').style.display = 'none';
+        document.getElementById('scanApplyBtn').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Run Tesseract OCR on selected image
+    const startScanBtn = document.getElementById('startScanBtn');
+    if (startScanBtn) {
+      startScanBtn.addEventListener('click', async () => {
+        const file = scanFileInput.files[0];
+        if (!file) return;
+
+        const progressContainer = document.getElementById('scanProgressContainer');
+        const statusText = document.getElementById('scanStatusText');
+        const progressPercent = document.getElementById('scanProgressPercent');
+        const progressBar = document.getElementById('scanProgressBar');
+
+        startScanBtn.disabled = true;
+        progressContainer.style.display = 'flex';
+
+        try {
+          statusText.textContent = 'กำลังโหลด Tesseract Core...';
+          progressPercent.textContent = '0%';
+          progressBar.style.width = '0%';
+
+          const worker = await Tesseract.createWorker('eng+tha', 1, {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                const pct = Math.round(m.progress * 100);
+                statusText.textContent = 'กำลังวิเคราะห์ข้อความจากภาพ...';
+                progressPercent.textContent = pct + '%';
+                progressBar.style.width = pct + '%';
+              }
+            }
+          });
+
+          statusText.textContent = 'กำลังประมวลผลรูปภาพ...';
+          const { data: { text } } = await worker.recognize(file);
+          await worker.terminate();
+
+          document.getElementById('scanRawOcrText').textContent = text;
+          
+          const detected = parseOcrResult(text);
+          renderScanResults(detected);
+
+          statusText.textContent = 'สแกนรูปภาพเสร็จสิ้น!';
+          progressPercent.textContent = '100%';
+          progressBar.style.width = '100%';
+        } catch (e) {
+          showToast('เกิดข้อผิดพลาดในการสแกน: ' + e.message);
+          statusText.textContent = 'เกิดข้อผิดพลาด!';
+        } finally {
+          startScanBtn.disabled = false;
+        }
+      });
+    }
+
+    function parseOcrResult(text) {
+      const results = [];
+      const cleanedText = text.toLowerCase().replace(/\s+/g, ' ');
+      
+      allItems.forEach(item => {
+        const itemName = item.name.toLowerCase().trim();
+        const index = cleanedText.indexOf(itemName);
+        
+        if (index !== -1) {
+          const rangeStart = Math.max(0, index - 15);
+          const rangeEnd = Math.min(cleanedText.length, index + itemName.length + 15);
+          const surroundingText = cleanedText.slice(rangeStart, rangeEnd);
+          
+          const numbers = surroundingText.match(/\d+/g);
+          if (numbers && numbers.length > 0) {
+            const qty = parseInt(numbers[0]);
+            if (qty > 0 && !results.some(r => r.itemId === item.id)) {
+              results.push({
+                itemId: item.id,
+                name: item.name,
+                currentQty: item.quantity || 0,
+                detectedQty: qty
+              });
+            }
+          }
+        }
+      });
+      return results;
+    }
+
+    let currentDetectedItems = [];
+
+    function renderScanResults(detected) {
+      currentDetectedItems = detected;
+      const container = document.getElementById('scanResultsContainer');
+      const list = document.getElementById('scanResultsList');
+      const countEl = document.getElementById('scanResultsCount');
+      const applyBtn = document.getElementById('scanApplyBtn');
+
+      list.innerHTML = '';
+      countEl.textContent = `${detected.length} รายการ`;
+
+      if (detected.length === 0) {
+        list.innerHTML = `<div style="text-align: center; color: var(--text-tertiary); font-size: .82rem; padding: 12px;">ไม่พบไอเทมที่มีชื่อตรงกับในคลังสินค้า</div>`;
+        applyBtn.disabled = true;
+        applyBtn.style.display = 'none';
+      } else {
+        detected.forEach((item, index) => {
+          const row = document.createElement('div');
+          row.className = 'scan-result-row';
+          row.innerHTML = `
+            <div class="scan-result-info">
+              <div class="scan-result-name">${escapeHtml(item.name)}</div>
+              <div class="scan-result-meta">จำนวนปัจจุบัน: ${formatNumber(item.currentQty)} ชิ้น</div>
+            </div>
+            <div class="scan-result-input-wrap">
+              <span style="font-size: .75rem; color: var(--text-secondary);">ตรวจพบ:</span>
+              <input type="number" class="scan-result-input" id="scanQtyInput_${index}" min="0" value="${item.detectedQty}" onchange="updateDetectedQty(${index}, this.value)" />
+              <span style="font-size: .75rem; color: var(--text-secondary);">ชิ้น</span>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+        applyBtn.disabled = false;
+        applyBtn.style.display = 'block';
+      }
+      container.style.display = 'flex';
+    }
+
+    window.updateDetectedQty = function(index, val) {
+      if (currentDetectedItems[index]) {
+        currentDetectedItems[index].detectedQty = Math.max(0, parseInt(val) || 0);
+      }
+    };
+
+    const scanApplyBtn = document.getElementById('scanApplyBtn');
+    if (scanApplyBtn) {
+      scanApplyBtn.addEventListener('click', async () => {
+        scanApplyBtn.disabled = true;
+        scanApplyBtn.textContent = 'กำลังอัปเดตสต็อก...';
+
+        let successCount = 0;
+
+        try {
+          for (const item of currentDetectedItems) {
+            const targetQty = item.detectedQty;
+            const before = item.currentQty;
+            if (targetQty === before) continue;
+
+            const { error: updateErr } = await db
+              .from('items')
+              .update({ quantity: targetQty })
+              .eq('id', item.itemId);
+            if (updateErr) throw updateErr;
+
+            const isAdd = targetQty > before;
+            const delta = Math.abs(targetQty - before);
+            const action = isAdd ? 'add' : 'remove';
+
+            const { error: logErr } = await db
+              .from('stock_log')
+              .insert({
+                item_id: item.itemId,
+                item_name: item.name,
+                action: action,
+                quantity_changed: delta,
+                quantity_before: before,
+                quantity_after: targetQty,
+                spent_dollar: 0,
+                spent_red: 0,
+                spent_green: 0,
+                note: 'อัปเดตผ่านการสแกนรูปภาพ'
+              });
+            if (logErr) throw logErr;
+
+            recordHistoryAction({
+              type: 'quantity',
+              data: {
+                itemId: item.itemId,
+                itemName: item.name,
+                oldQty: before,
+                newQty: targetQty,
+                delta,
+                action,
+                spentDollar: 0,
+                spentRed: 0,
+                spentGreen: 0,
+                note: 'อัปเดตผ่านการสแกนรูปภาพ'
+              }
+            });
+
+            const localItem = allItems.find(i => i.id === item.itemId);
+            if (localItem) localItem.quantity = targetQty;
+
+            successCount++;
+          }
+
+          showToast(`อัปเดตสต็อกไอเทมสำเร็จทั้งหมด ${successCount} รายการ`, 'success');
+          closeScanModal();
+          await loadDashboard();
+          if (document.getElementById('panel-stock').classList.contains('active')) {
+            renderStock(document.getElementById('stockSearch').value);
+          }
+        } catch (e) {
+          showToast('การอัปเดตคลังรูปภาพล้มเหลว: ' + e.message);
+        } finally {
+          scanApplyBtn.disabled = false;
+          scanApplyBtn.textContent = 'อัปเดตสต็อกทั้งหมดที่ตรวจพบ';
+        }
+      });
+    }
+
+    document.getElementById('scanModalClose').addEventListener('click', closeScanModal);
+    document.getElementById('scanCancelBtn').addEventListener('click', closeScanModal);
+    document.getElementById('scanInventoryBtn').addEventListener('click', openScanModal);
+
+    document.getElementById('undoBtn').addEventListener('click', handleUndo);
+    document.getElementById('redoBtn').addEventListener('click', handleRedo);
+
     // ===== Init =====
+    updateHistoryButtons();
     if (localStorage.getItem('isLoggedIn') === 'true') {
       document.body.classList.add('logged-in');
       loadDashboard();
