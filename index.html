@@ -1683,6 +1683,7 @@
         <button class="modal-close" id="modalClose"><i class="ti ti-x"></i></button>
       </div>
       <div class="modal-subtitle" id="modalSubtitle"></div>
+      <div id="modalUnitHint" style="text-align:center;font-size:.78rem;color:var(--text-tertiary);margin-top:4px;min-height:1.1em;"></div>
       <div class="modal-qty-display">
         <div class="modal-qty-label">จำนวนปัจจุบัน</div>
         <div class="modal-qty-value" id="modalCurrentQty">0</div>
@@ -1691,6 +1692,7 @@
         <button class="qty-btn" id="qtyMinus">−</button>
         <div class="qty-input-wrap">
           <input class="qty-input" id="qtyInput" type="number" min="1" value="1" />
+          <div id="qtyUnitLabel" style="font-size:.7rem;color:var(--text-tertiary);text-align:center;margin-top:2px;"></div>
         </div>
         <button class="qty-btn" id="qtyPlus">+</button>
       </div>
@@ -1752,6 +1754,11 @@
           <input id="addIsIllegal" type="checkbox" />
           <span>ไอเทมผิดกฎหมาย</span>
         </label>
+        
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label" for="addPurchaseUnit">จำนวนต่อหน่วยราคา (เช่น 1000 นัด, 1 ชิ้น)</label>
+          <input class="form-input" id="addPurchaseUnit" type="number" min="1" value="1" required />
+        </div>
         
         <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
           <div class="form-label" style="margin-bottom: 8px;">ราคาสั่งซื้อ (ใส่เป็น 0 ได้)</div>
@@ -1816,6 +1823,11 @@
           <input id="editIsIllegal" type="checkbox" />
           <span>ไอเทมผิดกฎหมาย</span>
         </label>
+        
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label" for="editPurchaseUnit">จำนวนต่อหน่วยราคา (เช่น 1000 นัด, 1 ชิ้น)</label>
+          <input class="form-input" id="editPurchaseUnit" type="number" min="1" value="1" required />
+        </div>
         
         <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
           <div class="form-label" style="margin-bottom: 8px;">ราคาสั่งซื้อ (ใส่เป็น 0 ได้)</div>
@@ -2177,6 +2189,8 @@
             const classes = ['stock-item-row'];
             if (isZero) classes.push('zero');
 
+            const unitVal = Math.max(1, item.purchase_unit || 1);
+            const unitSuffix = unitVal > 1 ? ` / ${formatNumber(unitVal)} ชิ้น` : '';
             return `
               <div class="${classes.join(' ')}">
                 <div class="stock-row-left">
@@ -2188,7 +2202,7 @@
                     <span>คงเหลือ:</span>
                     <span class="stock-item-qty">${formatNumber(item.quantity)}</span>
                     <span>•</span>
-                    <span>ราคา: $${formatNumber(item.price_dollar)} / แดง ${formatNumber(item.price_red)} / เขียว ${formatNumber(item.price_green)}</span>
+                    <span>ราคา: $${formatNumber(item.price_dollar)} / แดง ${formatNumber(item.price_red)} / เขียว ${formatNumber(item.price_green)}${unitSuffix}</span>
                   </div>
                 </div>
                 <div class="stock-row-actions">
@@ -2240,8 +2254,21 @@
       if (!item) return;
       modalState = { item, action };
 
+      const unit = Math.max(1, item.purchase_unit || 1);
+
       document.getElementById('modalTitle').textContent = action === 'add' ? '+ เพิ่มไอเทม' : '- นำไอเทมออก';
       document.getElementById('modalSubtitle').textContent = item.name;
+
+      // Show unit hint
+      const unitHint = document.getElementById('modalUnitHint');
+      const unitLabel = document.getElementById('qtyUnitLabel');
+      if (unit > 1) {
+        unitHint.textContent = `1 ครั้ง = ${formatNumber(unit)} ชิ้น`;
+        unitLabel.textContent = `×${formatNumber(unit)} ชิ้น`;
+      } else {
+        unitHint.textContent = '';
+        unitLabel.textContent = '';
+      }
 
       const qtyDisplay = document.getElementById('modalCurrentQty');
       qtyDisplay.textContent = formatNumber(item.quantity);
@@ -2273,13 +2300,26 @@
     function updatePreview() {
       const { item, action } = modalState;
       if (!item) return;
-      const delta = Math.max(1, parseInt(qtyInput.value) || 1);
+      const packs = Math.max(1, parseInt(qtyInput.value) || 1);
+      const unit = Math.max(1, item.purchase_unit || 1);
+      const delta = packs * unit;
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
       const preview = document.getElementById('qtyPreview');
       const sign = action === 'add' ? '+' : '−';
-      preview.innerHTML = `<span>${formatNumber(before)}</span> ${sign} ${formatNumber(delta)} = <span>${formatNumber(after)}</span>`;
+
+      // Build cost preview for 'add'
+      let costHint = '';
+      if (action === 'add') {
+        const parts = [];
+        if ((item.price_dollar || 0) > 0) parts.push(`$${formatNumber(packs * item.price_dollar)}`);
+        if ((item.price_red || 0) > 0) parts.push(`แดง ${formatNumber(packs * item.price_red)}`);
+        if ((item.price_green || 0) > 0) parts.push(`เขียว ${formatNumber(packs * item.price_green)}`);
+        if (parts.length > 0) costHint = ` <span style="color:var(--text-tertiary);font-size:.75rem;">(ใช้เงิน: ${parts.join(' | ')})</span>`;
+      }
+
+      preview.innerHTML = `<span>${formatNumber(before)}</span> ${sign} ${formatNumber(delta)} = <span>${formatNumber(after)}</span>${costHint}`;
 
       if (after < 0) {
         modalWarning.classList.add('show');
@@ -2319,7 +2359,9 @@
     modalApplyBtn.addEventListener('click', async () => {
       const { item, action } = modalState;
       if (!item) return;
-      const delta = Math.max(1, parseInt(qtyInput.value) || 1);
+      const packs = Math.max(1, parseInt(qtyInput.value) || 1);
+      const unit = Math.max(1, item.purchase_unit || 1);
+      const delta = packs * unit;
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
@@ -2341,10 +2383,10 @@
           .eq('id', item.id);
         if (updateErr) throw updateErr;
 
-        // Calculate spent totals for transaction (only on 'add')
-        const spentDollar = action === 'add' ? delta * (item.price_dollar || 0) : 0;
-        const spentRed = action === 'add' ? delta * (item.price_red || 0) : 0;
-        const spentGreen = action === 'add' ? delta * (item.price_green || 0) : 0;
+        // Calculate spent totals (price is per pack/purchase_unit, so multiply by packs)
+        const spentDollar = action === 'add' ? packs * (item.price_dollar || 0) : 0;
+        const spentRed = action === 'add' ? packs * (item.price_red || 0) : 0;
+        const spentGreen = action === 'add' ? packs * (item.price_green || 0) : 0;
 
         // Insert log
         const { error: logErr } = await db
@@ -2365,7 +2407,7 @@
         // Update local state
         item.quantity = after;
         showToast(
-          `${action === 'add' ? 'เพิ่ม' : 'นำออก'} ${item.name} จำนวน ${formatNumber(delta)} สำเร็จ`,
+          `${action === 'add' ? 'เพิ่ม' : 'นำออก'} ${item.name} จำนวน ${formatNumber(delta)} ชิ้น สำเร็จ`,
           'success'
         );
         closeModal();
@@ -2582,6 +2624,7 @@
       document.getElementById('addName').value = '';
       document.getElementById('addCategory').value = category || 'gun';
       document.getElementById('addIsIllegal').checked = false;
+      document.getElementById('addPurchaseUnit').value = 1;
       document.getElementById('addPriceDollar').value = 0;
       document.getElementById('addPriceRed').value = 0;
       document.getElementById('addPriceGreen').value = 0;
@@ -2606,6 +2649,7 @@
       const name = document.getElementById('addName').value.trim();
       const category = document.getElementById('addCategory').value;
       const isIllegal = document.getElementById('addIsIllegal').checked;
+      const purchaseUnit = Math.max(1, parseInt(document.getElementById('addPurchaseUnit').value) || 1);
       const priceDollar = Math.max(0, parseInt(document.getElementById('addPriceDollar').value) || 0);
       const priceRed = Math.max(0, parseInt(document.getElementById('addPriceRed').value) || 0);
       const priceGreen = Math.max(0, parseInt(document.getElementById('addPriceGreen').value) || 0);
@@ -2627,6 +2671,7 @@
             name,
             category,
             is_illegal: isIllegal,
+            purchase_unit: purchaseUnit,
             price_dollar: priceDollar,
             price_red: priceRed,
             price_green: priceGreen,
@@ -2687,6 +2732,7 @@
       document.getElementById('editName').value = item.name;
       document.getElementById('editCategory').value = item.category || 'misc';
       document.getElementById('editIsIllegal').checked = !!item.is_illegal;
+      document.getElementById('editPurchaseUnit').value = Math.max(1, item.purchase_unit || 1);
       document.getElementById('editPriceDollar').value = item.price_dollar || 0;
       document.getElementById('editPriceRed').value = item.price_red || 0;
       document.getElementById('editPriceGreen').value = item.price_green || 0;
@@ -2711,6 +2757,7 @@
       const name = document.getElementById('editName').value.trim();
       const category = document.getElementById('editCategory').value;
       const isIllegal = document.getElementById('editIsIllegal').checked;
+      const purchaseUnit = Math.max(1, parseInt(document.getElementById('editPurchaseUnit').value) || 1);
       const priceDollar = Math.max(0, parseInt(document.getElementById('editPriceDollar').value) || 0);
       const priceRed = Math.max(0, parseInt(document.getElementById('editPriceRed').value) || 0);
       const priceGreen = Math.max(0, parseInt(document.getElementById('editPriceGreen').value) || 0);
@@ -2730,6 +2777,7 @@
             name,
             category,
             is_illegal: isIllegal,
+            purchase_unit: purchaseUnit,
             price_dollar: priceDollar,
             price_red: priceRed,
             price_green: priceGreen
