@@ -2557,7 +2557,10 @@
     function renderDashboard() {
       // Stats
       const totalTypes = allItems.length;
-      const totalUnits = allItems.reduce((s, i) => s + (i.quantity || 0), 0);
+      const totalUnits = allItems.reduce((s, i) => {
+        const u = Math.max(1, i.purchase_unit || 1);
+        return s + Math.round((i.quantity || 0) / u);
+      }, 0);
       const illegalCount = allItems.filter(i => i.is_illegal).length;
       document.getElementById('statTypes').textContent = formatNumber(totalTypes);
       document.getElementById('statTotal').textContent = formatNumber(totalUnits);
@@ -2589,7 +2592,12 @@
         const items = grouped[cat] || [];
         const icon = getCategoryIcon(cat);
         const label = getCategoryLabel(cat);
-        const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+        // Calculate totalQty as pack count (divide by purchase_unit)
+        const totalQty = items.reduce((s, i) => {
+          const u = Math.max(1, i.purchase_unit || 1);
+          return s + Math.round((i.quantity || 0) / u);
+        }, 0);
+        const totalQtyLabel = items.some(i => (i.purchase_unit || 1) > 1) ? 'ชุด' : 'ชิ้น';
 
         let itemsHTML = '';
         if (items.length === 0) {
@@ -2600,6 +2608,13 @@
             const isZero = (item.quantity || 0) === 0;
             const classes = ['dashboard-item-row'];
             if (isZero) classes.push('zero');
+
+            // Display as packs when purchase_unit > 1
+            const unitVal = Math.max(1, item.purchase_unit || 1);
+            const packCount = Math.round((item.quantity || 0) / unitVal);
+            const qtyDisplay = unitVal > 1
+              ? `${formatNumber(packCount)} <span style="font-size:.7rem;font-weight:500;color:var(--text-tertiary)">ชุด</span>`
+              : formatNumber(item.quantity);
 
             // Calculate spent HTML
             const spent = itemSpentMap[item.id] || { dollar: 0, red: 0, green: 0 };
@@ -2621,7 +2636,7 @@
                   </div>
                   ${spentHTML}
                 </div>
-                <div class="item-row-qty">${formatNumber(item.quantity)}</div>
+                <div class="item-row-qty">${qtyDisplay}</div>
               </div>`;
           }).join('');
         }
@@ -2631,7 +2646,7 @@
             <div class="category-header">
               <div class="category-header-icon"><i class="ti ${icon}"></i></div>
               <div class="category-header-label">${label}</div>
-              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ชิ้น</div>
+              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ${totalQtyLabel}</div>
             </div>
             <div class="category-item-list">${itemsHTML}</div>
           </div>`;
@@ -2690,7 +2705,12 @@
         const items = grouped[cat] || [];
         const icon = getCategoryIcon(cat);
         const label = getCategoryLabel(cat);
-        const totalQty = items.reduce((s, i) => s + (i.quantity || 0), 0);
+        // Calculate totalQty as pack count (divide by purchase_unit)
+        const totalQty = items.reduce((s, i) => {
+          const u = Math.max(1, i.purchase_unit || 1);
+          return s + Math.round((i.quantity || 0) / u);
+        }, 0);
+        const totalQtyLabel = items.some(i => (i.purchase_unit || 1) > 1) ? 'ชุด' : 'ชิ้น';
 
         let itemsHTML = '';
         if (items.length === 0) {
@@ -2703,6 +2723,10 @@
             if (isZero) classes.push('zero');
 
             const unitVal = Math.max(1, item.purchase_unit || 1);
+            const packCount = Math.round((item.quantity || 0) / unitVal);
+            const qtyDisplay = unitVal > 1
+              ? `${formatNumber(packCount)} ชุด (${formatNumber(item.quantity)} ชิ้น)`
+              : formatNumber(item.quantity);
             const unitSuffix = unitVal > 1 ? ` / ${formatNumber(unitVal)} ชิ้น` : '';
             return `
               <div class="${classes.join(' ')}">
@@ -2713,7 +2737,7 @@
                   </div>
                   <div class="stock-item-meta" style="flex-wrap: wrap;">
                     <span>คงเหลือ:</span>
-                    <span class="stock-item-qty">${formatNumber(item.quantity)}</span>
+                    <span class="stock-item-qty">${qtyDisplay}</span>
                     <span>•</span>
                     <span>ราคา: $${formatNumber(item.price_dollar)} / แดง ${formatNumber(item.price_red)} / เขียว ${formatNumber(item.price_green)}${unitSuffix}</span>
                   </div>
@@ -2741,7 +2765,7 @@
             <div class="category-header">
               <div class="category-header-icon"><i class="ti ${icon}"></i></div>
               <div class="category-header-label">${label}</div>
-              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ชิ้น</div>
+              <div class="category-header-count">${items.length} รายการ · ${formatNumber(totalQty)} ${totalQtyLabel}</div>
               <button class="btn-add-item-compact" onclick="openAddItemModal('${cat}')" title="เพิ่มไอเทมใหม่ในหมวดหมู่นี้" style="margin-left: auto;">
                 <i class="ti ti-plus"></i>
               </button>
@@ -2775,16 +2799,9 @@
       document.getElementById('modalTitle').textContent = action === 'add' ? '+ เพิ่มไอเทม' : '- นำไอเทมออก';
       document.getElementById('modalSubtitle').textContent = item.name;
 
-      // Show unit hint
-      const unitHint = document.getElementById('modalUnitHint');
-      const unitLabel = document.getElementById('qtyUnitLabel');
-      if (unit > 1) {
-        unitHint.textContent = `1 ครั้ง = ${formatNumber(unit)} ชิ้น`;
-        unitLabel.textContent = `×${formatNumber(unit)} ชิ้น`;
-      } else {
-        unitHint.textContent = '';
-        unitLabel.textContent = '';
-      }
+      // Clear unit hints — input is now in direct piece count
+      document.getElementById('modalUnitHint').textContent = '';
+      document.getElementById('qtyUnitLabel').textContent = '';
 
       const qtyDisplay = document.getElementById('modalCurrentQty');
       qtyDisplay.textContent = formatNumber(item.quantity);
@@ -2824,31 +2841,32 @@
     function updatePreview() {
       const { item, action } = modalState;
       if (!item) return;
-      const packs = Math.max(1, parseInt(qtyInput.value) || 1);
+      const qty = Math.max(1, parseInt(qtyInput.value) || 1);   // direct piece count
       const unit = Math.max(1, item.purchase_unit || 1);
-      const delta = packs * unit;
+      const delta = qty;                                          // add/remove exact pieces
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
       const preview = document.getElementById('qtyPreview');
       const sign = action === 'add' ? '+' : '−';
 
-      // Build cost preview for 'add'
+      // Cost is proportional: (qty / purchase_unit) * price_per_pack
       let costHint = '';
       if (action === 'add') {
+        const proportion = qty / unit;
         const parts = [];
-        if ((item.price_dollar || 0) > 0) parts.push(`$${formatNumber(packs * item.price_dollar)}`);
-        if ((item.price_red || 0) > 0) parts.push(`แดง ${formatNumber(packs * item.price_red)}`);
-        if ((item.price_green || 0) > 0) parts.push(`เขียว ${formatNumber(packs * item.price_green)}`);
+        if ((item.price_dollar || 0) > 0) parts.push(`$${formatNumber(Math.round(proportion * item.price_dollar))}`);
+        if ((item.price_red || 0) > 0) parts.push(`แดง ${formatNumber(Math.round(proportion * item.price_red))}`);
+        if ((item.price_green || 0) > 0) parts.push(`เขียว ${formatNumber(Math.round(proportion * item.price_green))}`);
         if (parts.length > 0) costHint = ` <span style="color:var(--text-tertiary);font-size:.75rem;">(ใช้เงิน: ${parts.join(' | ')})</span>`;
 
         // Update wallet deduct preview
         const deductPreview = document.getElementById('deductWalletPreview');
         if (deductPreview && parts.length > 0) {
           const afterParts = [];
-          if ((item.price_dollar || 0) > 0) afterParts.push(`$ ${formatNumber(walletBalance.dollar)} → ${formatNumber(walletBalance.dollar - packs * item.price_dollar)}`);
-          if ((item.price_red || 0) > 0) afterParts.push(`แดง ${formatNumber(walletBalance.red)} → ${formatNumber(walletBalance.red - packs * item.price_red)}`);
-          if ((item.price_green || 0) > 0) afterParts.push(`เขียว ${formatNumber(walletBalance.green)} → ${formatNumber(walletBalance.green - packs * item.price_green)}`);
+          if ((item.price_dollar || 0) > 0) afterParts.push(`$ ${formatNumber(walletBalance.dollar)} → ${formatNumber(walletBalance.dollar - Math.round(proportion * item.price_dollar))}`);
+          if ((item.price_red || 0) > 0) afterParts.push(`แดง ${formatNumber(walletBalance.red)} → ${formatNumber(walletBalance.red - Math.round(proportion * item.price_red))}`);
+          if ((item.price_green || 0) > 0) afterParts.push(`เขียว ${formatNumber(walletBalance.green)} → ${formatNumber(walletBalance.green - Math.round(proportion * item.price_green))}`);
           deductPreview.textContent = 'กระเป๋าหลังหัก: ' + afterParts.join(' | ');
         }
       }
@@ -2896,9 +2914,9 @@
     modalApplyBtn.addEventListener('click', async () => {
       const { item, action } = modalState;
       if (!item) return;
-      const packs = Math.max(1, parseInt(qtyInput.value) || 1);
+      const qty = Math.max(1, parseInt(qtyInput.value) || 1);  // direct piece count
       const unit = Math.max(1, item.purchase_unit || 1);
-      const delta = packs * unit;
+      const delta = qty;                                         // exact pieces
       const before = item.quantity || 0;
       const after = action === 'add' ? before + delta : before - delta;
 
@@ -2925,10 +2943,11 @@
           .eq('id', item.id);
         if (updateErr) throw updateErr;
 
-        // Calculate spent totals (price is per pack/purchase_unit, so multiply by packs)
-        const spentDollar = action === 'add' ? packs * (item.price_dollar || 0) : 0;
-        const spentRed = action === 'add' ? packs * (item.price_red || 0) : 0;
-        const spentGreen = action === 'add' ? packs * (item.price_green || 0) : 0;
+        // Calculate spent proportionally: (qty / purchase_unit) * price_per_pack
+        const proportion = qty / unit;
+        const spentDollar = action === 'add' ? Math.round(proportion * (item.price_dollar || 0)) : 0;
+        const spentRed = action === 'add' ? Math.round(proportion * (item.price_red || 0)) : 0;
+        const spentGreen = action === 'add' ? Math.round(proportion * (item.price_green || 0)) : 0;
 
         // Deduct from wallet if toggle is on
         if (shouldDeductWallet) {
