@@ -1544,26 +1544,25 @@
       color: #fff;
     }
 
-    /* ===== Login Screen ===== */
-    .app-shell { display: none !important; }
-    .app-header { display: none !important; }
-
-    body.logged-in .app-shell { display: flex !important; }
-    body.logged-in .app-header { display: block !important; }
-
+    /* ===== Login Modal (for protected tabs: Stock & Log) ===== */
     .login-screen {
       position: fixed;
       inset: 0;
-      background: var(--bg-root);
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(12px);
       z-index: 10000;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .25s ease, visibility .25s ease;
     }
 
-    body.logged-in .login-screen {
-      display: none !important;
+    .login-screen.show {
+      opacity: 1;
+      visibility: visible;
     }
 
     .login-card {
@@ -1675,14 +1674,14 @@
   </style>
 </head>
 <body>
-  <!-- ===== Login Page ===== -->
+  <!-- ===== Login Modal (shown when accessing protected tabs) ===== -->
   <div id="loginScreen" class="login-screen">
-    <div class="login-card">
+    <div class="login-card" style="animation: none;">
       <div class="login-logo">
         <img src="logo.png" alt="30F Logo" />
       </div>
       <h1 class="login-title">เข้าสู่ระบบ 30F Stock</h1>
-      <p class="login-subtitle">กรุณากรอกบัญชีผู้ใช้งานเพื่อเข้าจัดการระบบคลัง</p>
+      <p class="login-subtitle">กรุณาล็อกอินเพื่อเข้าใช้งานหน้า <strong>จัดการ Stock</strong> และ <strong>Log ประวัติ</strong></p>
       
       <div class="form-group" style="text-align: left;">
         <label class="form-label" for="loginUsername">ชื่อผู้ใช้งาน (Username)</label>
@@ -1695,9 +1694,14 @@
       
       <div class="login-error" id="loginError">ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!</div>
       
-      <button class="btn-modal btn-apply-add" id="loginSubmitBtn" style="width: 100%; height: 46px; margin-top: 10px;">
-        <span>เข้าสู่ระบบ</span>
-      </button>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="btn-modal btn-cancel" id="loginCancelBtn" style="flex: 0 0 auto; height: 46px; padding: 0 20px;">
+          ยกเลิก
+        </button>
+        <button class="btn-modal btn-apply-add" id="loginSubmitBtn" style="flex: 1; height: 46px;">
+          <span>เข้าสู่ระบบ</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2220,16 +2224,30 @@
     const tabBtns = document.querySelectorAll('.tab-btn');
     const panels = document.querySelectorAll('.tab-panel');
 
+    // Protected tabs that require login
+    const PROTECTED_TABS = ['stock', 'log'];
+    let pendingTab = null; // tab to switch to after successful login
+
+    function switchTab(tab) {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+      if (btn) btn.classList.add('active');
+      document.getElementById(`panel-${tab}`).classList.add('active');
+
+      if (tab === 'stock') loadStock();
+      if (tab === 'log') { logPage = 0; logData = []; logHasMore = true; loadLogs(); }
+    }
+
     tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.dataset.tab;
-        tabBtns.forEach(b => b.classList.remove('active'));
-        panels.forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`panel-${tab}`).classList.add('active');
-
-        if (tab === 'stock') loadStock();
-        if (tab === 'log') { logPage = 0; logData = []; logHasMore = true; loadLogs(); }
+        if (PROTECTED_TABS.includes(tab) && !isLoggedIn()) {
+          pendingTab = tab;
+          showLoginModal();
+          return;
+        }
+        switchTab(tab);
       });
     });
 
@@ -3343,10 +3361,28 @@
         closeEditItemModal();
         closeScanModal();
         confirmOverlay.classList.remove('show');
+        hideLoginModal();
       }
     });
 
     // ===== Login Logic =====
+    function isLoggedIn() {
+      return localStorage.getItem('isLoggedIn') === 'true';
+    }
+
+    function showLoginModal() {
+      document.getElementById('loginUsername').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginError').classList.remove('show');
+      document.getElementById('loginScreen').classList.add('show');
+      setTimeout(() => document.getElementById('loginUsername').focus(), 100);
+    }
+
+    function hideLoginModal() {
+      document.getElementById('loginScreen').classList.remove('show');
+      pendingTab = null;
+    }
+
     async function sha256(message) {
       const msgBuffer = new TextEncoder().encode(message);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -3368,16 +3404,30 @@
       // Verify admin:admin30fpassword
       if (hashed === '17f26736d58b83ef4c0fac9c00b80ac9a6656ae6cd38dc2c5fac0dbbc197340f') {
         localStorage.setItem('isLoggedIn', 'true');
-        document.body.classList.add('logged-in');
         loginError.classList.remove('show');
-        loadDashboard();
-        setupRealtime();
+        updateLoginUI();
+        hideLoginModal();
+        // Switch to the tab that was requested
+        if (pendingTab) {
+          switchTab(pendingTab);
+          pendingTab = null;
+        }
+        if (!isRealTimeSetup) {
+          setupRealtime();
+          isRealTimeSetup = true;
+        }
       } else {
         loginError.classList.add('show');
-        // Trigger shake
         loginError.style.animation = 'none';
-        loginError.offsetHeight; /* trigger reflow */
+        loginError.offsetHeight;
         loginError.style.animation = null;
+      }
+    }
+
+    function updateLoginUI() {
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.style.display = isLoggedIn() ? '' : 'none';
       }
     }
 
@@ -3389,10 +3439,19 @@
       if (e.key === 'Enter') handleLogin();
     });
 
+    document.getElementById('loginCancelBtn').addEventListener('click', hideLoginModal);
+
+    // Close login modal when clicking backdrop
+    document.getElementById('loginScreen').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('loginScreen')) hideLoginModal();
+    });
+
     document.getElementById('logoutBtn').addEventListener('click', () => {
       if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
         localStorage.removeItem('isLoggedIn');
-        window.location.reload();
+        // Switch back to dashboard tab
+        switchTab('dashboard');
+        updateLoginUI();
       }
     });
 
@@ -3762,13 +3821,14 @@
     document.getElementById('redoBtn').addEventListener('click', handleRedo);
 
     // ===== Init =====
+    let isRealTimeSetup = false;
     updateHistoryButtons();
-    if (localStorage.getItem('isLoggedIn') === 'true') {
-      document.body.classList.add('logged-in');
-      loadDashboard();
+    updateLoginUI();
+    // Always load dashboard (no login required)
+    loadDashboard();
+    if (isLoggedIn()) {
       setupRealtime();
-    } else {
-      document.body.classList.remove('logged-in');
+      isRealTimeSetup = true;
     }
   </script>
 </body>
