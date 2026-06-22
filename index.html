@@ -1671,6 +1671,24 @@
     .scan-result-input:focus {
       border-color: var(--accent);
     }
+
+    /* ===== Logged In / Guest dashboard visibility rules ===== */
+    body:not(.logged-in) .finance-card {
+      cursor: default !important;
+    }
+    body:not(.logged-in) .finance-card:hover {
+      border-color: var(--border) !important;
+      box-shadow: none !important;
+    }
+    body:not(.logged-in) .finance-edit-icon {
+      display: none !important;
+    }
+    body:not(.logged-in) .finance-reset-btn {
+      display: none !important;
+    }
+    body:not(.logged-in) .item-row-spent button {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -2130,6 +2148,37 @@
         </button>
       </div>
     </div>
+  <!-- ===== Edit Spent Modal ===== -->
+  <div class="modal-overlay" id="spentModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">แก้ไขยอดซื้อสะสม</div>
+        <button class="modal-close" id="spentClose"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-subtitle" id="spentModalSubtitle">ไอเทม: —</div>
+      <div style="margin-top: 16px;">
+        <input type="hidden" id="spentItemId" />
+        <div class="form-group">
+          <label class="form-label" for="spentPriceDollar">ยอดซื้อดอลลาร์ ($)</label>
+          <input class="form-input" id="spentPriceDollar" type="number" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="spentPriceRed">ยอดซื้อเงินแดง</label>
+          <input class="form-input" id="spentPriceRed" type="number" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="spentPriceGreen">ยอดซื้อเงินเขียว</label>
+          <input class="form-input" id="spentPriceGreen" type="number" min="0" value="0" />
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 24px;">
+        <button class="btn-modal btn-cancel" id="spentCancel">ยกเลิก</button>
+        <button class="btn-modal btn-apply-add" id="spentSubmitBtn">
+          <span>บันทึก</span>
+          <div class="spinner" id="spentSpinner" style="display:none;"></div>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- ===== Toast Container ===== -->
@@ -2374,6 +2423,9 @@
 
     function startEditWallet(field, e) {
       if (e) e.stopPropagation();
+      if (!isLoggedIn()) {
+        return;
+      }
       // If already editing this field, ignore
       if (walletEditingField === field) return;
       // Commit any open edit first
@@ -2458,6 +2510,9 @@
 
     async function resetWallet(field, e) {
       if (e) e.stopPropagation();
+      if (!isLoggedIn()) {
+        return;
+      }
       // Cancel any active edit
       if (walletEditingField === field) cancelEditWallet(field);
       const oldVal = walletBalance[field] || 0;
@@ -2490,6 +2545,10 @@
     }
 
     async function resetItemQty(itemId) {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       const item = allItems.find(i => i.id === itemId);
       if (!item) return;
       if (!confirm(`คุณต้องการรีเซ็ตจำนวนของ "${item.name}" เป็น 0 ใช่หรือไม่?`)) {
@@ -2603,13 +2662,24 @@
 
             // Calculate spent HTML
             const spent = itemSpentMap[item.id] || { dollar: 0, red: 0, green: 0 };
+            const hasSpent = spent.dollar > 0 || spent.red > 0 || spent.green > 0;
             let spentHTML = '';
-            if (spent.dollar > 0 || spent.red > 0 || spent.green > 0) {
+            if (hasSpent || isLoggedIn()) {
               const parts = [];
               if (spent.dollar > 0) parts.push(`$${formatNumber(spent.dollar)}`);
               if (spent.red > 0) parts.push(`<span style="color: #f45b69; font-weight: 500;">แดง ${formatNumber(spent.red)}</span>`);
               if (spent.green > 0) parts.push(`<span style="color: #84cc16; font-weight: 500;">เขียว ${formatNumber(spent.green)}</span>`);
-              spentHTML = `<div class="item-row-spent" style="margin-top: 1px;">ซื้อสะสม: ${parts.join(' | ')}</div>`;
+              const textVal = parts.length > 0 ? parts.join(' | ') : '0';
+              spentHTML = `
+                <div class="item-row-spent" style="margin-top: 1px; display: flex; align-items: center; gap: 6px;">
+                  <span>ซื้อสะสม: ${textVal}</span>
+                  <button onclick="triggerSpentEdit(${item.id}, event)" title="แก้ไขค่าซื้อสะสม" style="background: none; border: none; padding: 2px; color: var(--text-tertiary); cursor: pointer; display: inline-flex; align-items: center; transition: color var(--transition);">
+                    <i class="ti ti-pencil" style="font-size: 0.75rem;"></i>
+                  </button>
+                  <button onclick="triggerSpentReset(${item.id}, event)" title="รีเซ็ตค่าซื้อสะสม" style="background: none; border: none; padding: 2px; color: var(--danger); opacity: 0.6; cursor: pointer; display: inline-flex; align-items: center; transition: all var(--transition);" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+                    <i class="ti ti-rotate-2" style="font-size: 0.75rem;"></i>
+                  </button>
+                </div>`;
             }
 
             return `
@@ -2721,6 +2791,9 @@
                 <div class="stock-row-actions">
                   <button class="btn-qty-action" onclick="openEditItemModal(${item.id})" title="แก้ไขราคา/ข้อมูล" style="background: var(--bg-elevated); color: var(--text-secondary);">
                     <i class="ti ti-settings"></i>
+                  </button>
+                  <button class="btn-qty-action spent" onclick="triggerSpentEdit(${item.id}, event)" title="แก้ไขค่าซื้อสะสม" style="background: var(--bg-elevated); color: var(--warning);">
+                    <i class="ti ti-coins"></i>
                   </button>
                   <button class="btn-qty-action add" onclick="openModal(${item.id}, 'add')" title="เพิ่ม">
                     <i class="ti ti-plus"></i>
@@ -2888,6 +2961,11 @@
     });
 
     modalApplyBtn.addEventListener('click', async () => {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        closeModal();
+        return;
+      }
       const { item, action } = modalState;
       if (!item) return;
       const qty = Math.max(1, parseInt(qtyInput.value) || 1);  // direct piece count
@@ -3107,6 +3185,11 @@
     });
 
     document.getElementById('confirmDelete').addEventListener('click', async () => {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        confirmOverlay.classList.remove('show');
+        return;
+      }
       try {
         // Delete all rows — Supabase requires a filter, so we use gte on id
         const { error } = await db.from('stock_log').delete().gte('id', 0);
@@ -3208,6 +3291,10 @@
     });
 
     addItemSubmitBtn.addEventListener('click', async () => {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       const name = document.getElementById('addName').value.trim();
       const category = document.getElementById('addCategory').value;
       const isIllegal = document.getElementById('addIsIllegal').checked;
@@ -3315,6 +3402,10 @@
     });
 
     editItemSubmitBtn.addEventListener('click', async () => {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       const id = parseInt(document.getElementById('editItemId').value);
       const name = document.getElementById('editName').value.trim();
       const category = document.getElementById('editCategory').value;
@@ -3363,6 +3454,10 @@
     });
 
     document.getElementById('editItemDelete').addEventListener('click', async () => {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       const id = parseInt(document.getElementById('editItemId').value);
       const name = document.getElementById('editName').value;
       
@@ -3397,6 +3492,148 @@
       }
     });
 
+    // ===== Edit Spent Modal Logic =====
+    const spentModal = document.getElementById('spentModal');
+    const spentSpinner = document.getElementById('spentSpinner');
+    const spentSubmitBtn = document.getElementById('spentSubmitBtn');
+
+    function openSpentModal(itemId) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('spentItemId').value = item.id;
+      document.getElementById('spentModalSubtitle').textContent = `ไอเทม: ${item.name}`;
+
+      const spent = itemSpentMap[item.id] || { dollar: 0, red: 0, green: 0 };
+      document.getElementById('spentPriceDollar').value = spent.dollar;
+      document.getElementById('spentPriceRed').value = spent.red;
+      document.getElementById('spentPriceGreen').value = spent.green;
+
+      spentSpinner.style.display = 'none';
+      spentSubmitBtn.disabled = false;
+      spentModal.classList.add('show');
+    }
+
+    function closeSpentModal() {
+      spentModal.classList.remove('show');
+    }
+
+    document.getElementById('spentClose').addEventListener('click', closeSpentModal);
+    document.getElementById('spentCancel').addEventListener('click', closeSpentModal);
+    spentModal.addEventListener('click', (e) => {
+      if (e.target === spentModal) closeSpentModal();
+    });
+
+    spentSubmitBtn.addEventListener('click', async () => {
+      const id = parseInt(document.getElementById('spentItemId').value);
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+
+      const targetDollar = Math.max(0, parseInt(document.getElementById('spentPriceDollar').value) || 0);
+      const targetRed = Math.max(0, parseInt(document.getElementById('spentPriceRed').value) || 0);
+      const targetGreen = Math.max(0, parseInt(document.getElementById('spentPriceGreen').value) || 0);
+
+      spentSpinner.style.display = 'inline-block';
+      spentSubmitBtn.disabled = true;
+
+      try {
+        if (!isLoggedIn()) {
+          showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+          return;
+        }
+
+        // 1. Reset all existing 'add' logs spent for this item to 0
+        const { error: resetError } = await db
+          .from('stock_log')
+          .update({ spent_dollar: 0, spent_red: 0, spent_green: 0 })
+          .eq('item_id', id)
+          .eq('action', 'add');
+        
+        if (resetError) throw resetError;
+
+        // 2. Insert adjustment log
+        const { error: insertError } = await db
+          .from('stock_log')
+          .insert({
+            item_id: id,
+            item_name: item.name,
+            action: 'add',
+            quantity_changed: 0,
+            quantity_before: item.quantity || 0,
+            quantity_after: item.quantity || 0,
+            spent_dollar: targetDollar,
+            spent_red: targetRed,
+            spent_green: targetGreen,
+            note: 'แก้ไขยอดซื้อสะสม'
+          });
+
+        if (insertError) throw insertError;
+
+        showToast(`แก้ไขค่าซื้อสะสมของ ${item.name} สำเร็จ`, 'success');
+        closeSpentModal();
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('แก้ไขค่าซื้อสะสมล้มเหลว: ' + e.message);
+      } finally {
+        spentSpinner.style.display = 'none';
+        spentSubmitBtn.disabled = false;
+      }
+    });
+
+    function triggerSpentEdit(itemId, event) {
+      if (event) event.stopPropagation();
+      if (!isLoggedIn()) {
+        pendingTab = 'dashboard'; // stay on dashboard
+        showLoginModal();
+        return;
+      }
+      openSpentModal(itemId);
+    }
+
+    async function triggerSpentReset(itemId, event) {
+      if (event) event.stopPropagation();
+      if (!isLoggedIn()) {
+        pendingTab = 'dashboard';
+        showLoginModal();
+        return;
+      }
+      await resetItemSpent(itemId);
+    }
+
+    async function resetItemSpent(itemId) {
+      const item = allItems.find(i => i.id === itemId);
+      if (!item) return;
+      if (!confirm(`คุณต้องการรีเซ็ตยอดซื้อสะสมของ "${item.name}" เป็น 0 ใช่หรือไม่?`)) {
+        return;
+      }
+
+      try {
+        if (!isLoggedIn()) {
+          showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+          return;
+        }
+
+        const { error } = await db
+          .from('stock_log')
+          .update({ spent_dollar: 0, spent_red: 0, spent_green: 0 })
+          .eq('item_id', itemId)
+          .eq('action', 'add');
+        
+        if (error) throw error;
+
+        showToast(`รีเซ็ตค่าซื้อสะสมของ ${item.name} สำเร็จ`, 'success');
+        await loadDashboard();
+        if (document.getElementById('panel-stock').classList.contains('active')) {
+          renderStock(document.getElementById('stockSearch').value);
+        }
+      } catch (e) {
+        showToast('รีเซ็ตค่าซื้อสะสมล้มเหลว: ' + e.message);
+      }
+    }
+
     // ===== Keyboard shortcuts =====
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -3404,6 +3641,7 @@
         closeAddItemModal();
         closeEditItemModal();
         closeScanModal();
+        closeSpentModal();
         confirmOverlay.classList.remove('show');
         hideLoginModal();
       }
@@ -3469,10 +3707,13 @@
     }
 
     function updateLoginUI() {
+      const loggedIn = isLoggedIn();
+      document.body.classList.toggle('logged-in', loggedIn);
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
-        logoutBtn.style.display = isLoggedIn() ? '' : 'none';
+        logoutBtn.style.display = loggedIn ? '' : 'none';
       }
+      renderDashboard();
     }
 
     loginSubmitBtn.addEventListener('click', handleLogin);
@@ -3501,6 +3742,10 @@
 
     // ===== Undo / Redo Execution Handlers =====
     async function handleUndo() {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       if (historyPointer < 0) return;
       const action = historyStack[historyPointer];
       historyPointer--;
@@ -3547,6 +3792,10 @@
     }
 
     async function handleRedo() {
+      if (!isLoggedIn()) {
+        showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+        return;
+      }
       if (historyPointer >= historyStack.length - 1) return;
       historyPointer++;
       const action = historyStack[historyPointer];
@@ -3783,6 +4032,11 @@
     const scanApplyBtn = document.getElementById('scanApplyBtn');
     if (scanApplyBtn) {
       scanApplyBtn.addEventListener('click', async () => {
+        if (!isLoggedIn()) {
+          showToast('กรุณาเข้าสู่ระบบเพื่อดำเนินการ');
+          closeScanModal();
+          return;
+        }
         scanApplyBtn.disabled = true;
         scanApplyBtn.textContent = 'กำลังอัปเดตสต็อก...';
 
