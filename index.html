@@ -1893,6 +1893,19 @@
         <button class="qty-btn" id="qtyPlus">+</button>
       </div>
       <div class="qty-preview" id="qtyPreview"></div>
+
+      <!-- Deduct wallet toggle (shown only when action=add and item has price) -->
+      <div id="deductWalletRow" style="display:none; margin: 0 0 14px; padding: 10px 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md);">
+        <label class="form-toggle" style="margin-top:0; justify-content: space-between;">
+          <span style="display:flex;align-items:center;gap:7px;">
+            <i class="ti ti-wallet" style="color:var(--accent);font-size:1rem;"></i>
+            <span style="font-size:.85rem;">หักเงินจากกระเป๋าสตางค์</span>
+          </span>
+          <input type="checkbox" id="chkDeductWallet" checked />
+        </label>
+        <div id="deductWalletPreview" style="font-size:.75rem;color:var(--text-tertiary);margin-top:6px;font-family:var(--font-mono);padding-left:2px;"></div>
+      </div>
+
       <div class="modal-warning" id="modalWarning">
         <i class="ti ti-alert-circle"></i> จำนวนในคลังไม่สามารถติดลบได้
       </div>
@@ -2785,6 +2798,14 @@
       applySpinner.style.display = 'none';
       modalApplyBtn.disabled = false;
 
+      // Show/hide deduct wallet toggle
+      const hasPrice = action === 'add' && ((item.price_dollar || 0) > 0 || (item.price_red || 0) > 0 || (item.price_green || 0) > 0);
+      const deductRow = document.getElementById('deductWalletRow');
+      deductRow.style.display = hasPrice ? '' : 'none';
+      if (hasPrice) {
+        document.getElementById('chkDeductWallet').checked = true;
+      }
+
       updatePreview();
       stockModal.classList.add('show');
     }
@@ -2820,6 +2841,16 @@
         if ((item.price_red || 0) > 0) parts.push(`แดง ${formatNumber(packs * item.price_red)}`);
         if ((item.price_green || 0) > 0) parts.push(`เขียว ${formatNumber(packs * item.price_green)}`);
         if (parts.length > 0) costHint = ` <span style="color:var(--text-tertiary);font-size:.75rem;">(ใช้เงิน: ${parts.join(' | ')})</span>`;
+
+        // Update wallet deduct preview
+        const deductPreview = document.getElementById('deductWalletPreview');
+        if (deductPreview && parts.length > 0) {
+          const afterParts = [];
+          if ((item.price_dollar || 0) > 0) afterParts.push(`$ ${formatNumber(walletBalance.dollar)} → ${formatNumber(walletBalance.dollar - packs * item.price_dollar)}`);
+          if ((item.price_red || 0) > 0) afterParts.push(`แดง ${formatNumber(walletBalance.red)} → ${formatNumber(walletBalance.red - packs * item.price_red)}`);
+          if ((item.price_green || 0) > 0) afterParts.push(`เขียว ${formatNumber(walletBalance.green)} → ${formatNumber(walletBalance.green - packs * item.price_green)}`);
+          deductPreview.textContent = 'กระเป๋าหลังหัก: ' + afterParts.join(' | ');
+        }
       }
 
       preview.innerHTML = `<span>${formatNumber(before)}</span> ${sign} ${formatNumber(delta)} = <span>${formatNumber(after)}</span>${costHint}`;
@@ -2832,6 +2863,9 @@
         modalApplyBtn.disabled = false;
       }
     }
+
+    // Update deduct preview when checkbox changes
+    document.getElementById('chkDeductWallet').addEventListener('change', updatePreview);
 
     document.getElementById('qtyMinus').addEventListener('click', () => {
       const val = parseInt(qtyInput.value) || 1;
@@ -2873,6 +2907,11 @@
         return;
       }
 
+      // Check deduct wallet toggle
+      const shouldDeductWallet = action === 'add' &&
+        document.getElementById('chkDeductWallet').checked &&
+        document.getElementById('deductWalletRow').style.display !== 'none';
+
       // Loading state
       applyBtnText.textContent = '';
       applySpinner.style.display = 'block';
@@ -2890,6 +2929,15 @@
         const spentDollar = action === 'add' ? packs * (item.price_dollar || 0) : 0;
         const spentRed = action === 'add' ? packs * (item.price_red || 0) : 0;
         const spentGreen = action === 'add' ? packs * (item.price_green || 0) : 0;
+
+        // Deduct from wallet if toggle is on
+        if (shouldDeductWallet) {
+          walletBalance.dollar = Math.max(0, walletBalance.dollar - spentDollar);
+          walletBalance.red = Math.max(0, walletBalance.red - spentRed);
+          walletBalance.green = Math.max(0, walletBalance.green - spentGreen);
+          await saveWallet();
+          updateWalletUI();
+        }
 
         // Insert log
         const { error: logErr } = await db
@@ -2924,8 +2972,9 @@
 
         // Update local state
         item.quantity = after;
+        const deductMsg = shouldDeductWallet && (spentDollar > 0 || spentRed > 0 || spentGreen > 0) ? ' (หักเงินแล้ว)' : '';
         showToast(
-          `${action === 'add' ? 'เพิ่ม' : 'นำออก'} ${item.name} จำนวน ${formatNumber(delta)} ชิ้น สำเร็จ`,
+          `${action === 'add' ? 'เพิ่ม' : 'นำออก'} ${item.name} จำนวน ${formatNumber(delta)} ชิ้น สำเร็จ${deductMsg}`,
           'success'
         );
         closeModal();
